@@ -52,7 +52,7 @@ Automate via **Windows Task Scheduler**:
 1. Create a task triggered **At log on** (and optionally daily at a time your PC is usually awake).
 2. Action: Start a program → `wsl.exe`
 3. Arguments (example):
-   `-e bash -lc 'STATE_BACKUP_DIR="/mnt/c/Users/<you>/Backups/haytham/state" PHOTOS_BACKUP_DIR="/mnt/d/Backups/haytham/immich-originals" /home/<wsl-user>/haytham-homelab-docs/scripts/pull-homelab-backups.sh'`
+   `-e bash -lc 'STATE_BACKUP_DIR="/mnt/c/Users/<you>/Backups/haytham/state" PHOTOS_BACKUP_DIR="/mnt/d/Backups/haytham/immich-originals" /home/<wsl-user>/haytham-homelab/scripts/pull-homelab-backups.sh'`
 
 ## 5. Verification
 

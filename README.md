@@ -31,7 +31,7 @@ Domain base: `haytham.internal` (RFC 9476). Wildcard `*.haytham.internal → NPM
 ## Directory Layout
 
 ```
-haytham-homelab-docs/
+haytham-homelab/
 ├── terraform/                 # Proxmox LXC provisioning (bpg/proxmox)
 │   ├── locals.tf              # Container definitions (enabled flag + swap)
 │   ├── containers.tf          # Per-tier module calls (10/20/30/40/60/90)
