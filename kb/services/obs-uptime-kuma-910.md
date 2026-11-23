@@ -21,7 +21,7 @@ Self-hosted uptime monitoring and alerting for all homelab services, DNS resolut
 | Field | Value |
 |---|---|
 | CTID / IP | 910 / `192.168.100.91` (see `../reference/ip-ctid-matrix.md`) |
-| Resources | 1 core / 384 MB RAM / 512 MB swap / 4 GB disk |
+| Resources | 1 core / 384 MB RAM / 512 MB swap / 8 GB disk |
 | Base | Ubuntu 24.04 LXC + Docker (`roles/docker`), `louislam/uptime-kuma:2.5.6` |
 | Port | `3001` |
 | DB | Embedded SQLite (`/opt/uptime-kuma/data/kuma.db`) |

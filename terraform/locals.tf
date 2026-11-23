@@ -173,7 +173,7 @@ locals {
       cores    = 1
       memory   = 384
       swap     = 512
-      disk_gb  = 4
+      disk_gb  = 8
       tags     = ["tier-observability", "monitoring"]
     }
   }
