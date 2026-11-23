@@ -41,8 +41,12 @@ retrievable: false
 25. Q: Karakeep RAM/disk and why? → 2 cores / 4 GB / 24 GB; headless Chrome.
 26. Q: HAOS Terraform or manual? → Manual `qm` (ADR-005); requires ovmf/q35/virtio-scsi-pci/efidisk0.
 27. Q: HAOS boot hang signature? → "Booting from Hard Disk", 50% CPU, 0 IO.
-28. Q: Reboot order for update-all? → 210/220 → 230 → 320 → 420 → 110/120.
-29. Q: What is lost on `terraform destroy`? → everything in rootfs (see persistence-design); Vaultwarden export first.
+28. Q: Reboot order for update-all (Phase 1)? → 320 → 610 → 440/910 → 110/120/130 (`operations/update-and-reboot.md`).
+29. Q: How are Immich photos and Vaultwarden backed up without cloud or Samba? → Track 1 daily encrypted `restic` on Proxmox pulled via WSL SSH; Track 2 incremental `rsync` over SSH directly from CT `610` (`library/upload/profile`) to PC/USB (`operations/backup-and-restore.md`).
 30. Q: What is SSO status? → Reserved (ADR-004); Authelia default-if-needed.
 31. Q: How to read one vault value? → `ansible localhost -m debug -a "var=<name>" -e @group_vars/<tier>.yml`.
 32. Q: How to share project zip safely? → exclude `.vault_pass` (`zip -r … -x`).
+33. Q: What are `haytham`'s current hardware specs? → ThinkCentre M910q Tiny, Intel i5 7th gen (HD 630 Quick Sync), 8 GB RAM (16 GB planned), 1 TB SSD (`architecture/overview.md`).
+34. Q: Why are Tier 20, Karakeep, and HAOS deferred? → 8 GB RAM constraint & zero Tier 20 consumers; preserved for 16 GB revival (`decisions/ADR-007-lean-8gb-phase1.md`).
+35. Q: Why are `/dev/net/tun` (CT 130) and `/dev/dri` (CT 610) configured via `host_devices.yml` instead of Terraform? → Proxmox returns HTTP 403 for `device_passthrough` on non-root API tokens (`services/network-tailscale-130.md`).
+36. Q: What IP and CTID are Tailscale, Homepage, Immich, and Uptime Kuma? → `130` (`.13`), `440` (`.44`, root `haytham.internal`), `610` (`.61`, 500 GB), `910` (`.91`) (`reference/ip-ctid-matrix.md`).

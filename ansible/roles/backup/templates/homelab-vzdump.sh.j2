@@ -1,0 +1,21 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+# Weekly Proxmox vzdump snapshots for lightweight LXCs (excludes CT 610 Immich
+# 500 GB media volume; Immich DB is backed up daily in restic and originals are
+# mirrored off-host via Track 2 rsync).
+
+STORAGE="{{ backup_vzdump_storage }}"
+KEEP_LAST="{{ backup_vzdump_keep_last }}"
+CTIDS="{{ backup_vzdump_ctids | join(' ') }}"
+
+for ctid in $CTIDS; do
+  if pct status "$ctid" >/dev/null 2>&1; then
+    echo "[vzdump] Backing up CT $ctid -> $STORAGE (keep-last=$KEEP_LAST)"
+    vzdump "$ctid" \
+      --storage "$STORAGE" \
+      --mode snapshot \
+      --compress zstd \
+      --prune-backups "keep-last=$KEEP_LAST"
+  fi
+done

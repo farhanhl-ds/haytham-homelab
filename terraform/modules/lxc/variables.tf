@@ -25,6 +25,12 @@ variable "memory_mb" {
   default = 512
 }
 
+variable "swap_mb" {
+  description = "Swap cushion in MB to prevent sudden OOM kills during apt upgrades or workload spikes"
+  type        = number
+  default     = 512
+}
+
 variable "disk_gb" {
   type    = number
   default = 4

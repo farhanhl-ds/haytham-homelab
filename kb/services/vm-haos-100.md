@@ -4,13 +4,15 @@ title: Home Assistant OS — VM 100 (manual)
 tier: "vm"
 ctid: "100"
 ip: 192.168.100.3
-status: planned
+status: reserved
 last_verified: unreleased
 tags: [haos, vm, home-assistant, qm]
 retrievable: true
 ---
 
 # Home Assistant OS — VM 100 (manual)
+
+> **Status: Deferred** until the 16 GB RAM upgrade so static KVM memory does not contend with Immich on 8 GB RAM — see `../decisions/ADR-007-lean-8gb-phase1.md`.
 
 ## 1. Purpose
 

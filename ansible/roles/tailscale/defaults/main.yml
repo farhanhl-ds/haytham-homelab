@@ -1,0 +1,6 @@
+---
+# Tailscale subnet router defaults.
+# kb/services/network-tailscale-130.md
+tailscale_advertise_routes: "192.168.100.0/24"
+tailscale_accept_dns: false
+tailscale_authkey: "{{ vault_tailscale_authkey | default('CHANGEME') }}"

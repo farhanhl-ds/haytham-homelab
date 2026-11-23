@@ -1,0 +1,92 @@
+---
+- name: Guard against unencrypted CHANGEME restic password
+  ansible.builtin.fail:
+    msg: "vault_restic_password is still CHANGEME in group_vars/proxmox.yml. Encrypt a real password first."
+  when: backup_restic_password == "CHANGEME"
+
+- name: Install backup prerequisites on Proxmox host
+  ansible.builtin.apt:
+    name: [restic, rsync]
+    state: present
+    update_cache: true
+    cache_valid_time: 3600
+
+- name: Create backup configuration and data directories
+  ansible.builtin.file:
+    path: "{{ item.path }}"
+    state: directory
+    owner: root
+    group: root
+    mode: "{{ item.mode }}"
+  loop:
+    - { path: "{{ backup_config_dir }}", mode: "0700" }
+    - { path: "{{ backup_base_dir }}", mode: "0700" }
+    - { path: "{{ backup_staging_dir }}", mode: "0700" }
+
+- name: Write restic repository password file
+  ansible.builtin.copy:
+    dest: "{{ backup_restic_password_file }}"
+    content: "{{ backup_restic_password }}\n"
+    owner: root
+    group: root
+    mode: "0600"
+  no_log: true
+
+- name: Check whether restic repository is initialized
+  ansible.builtin.stat:
+    path: "{{ backup_restic_repo }}/config"
+  register: restic_repo_config
+
+- name: Initialize local encrypted restic repository
+  ansible.builtin.command:
+    argv:
+      - restic
+      - -r
+      - "{{ backup_restic_repo }}"
+      - --password-file
+      - "{{ backup_restic_password_file }}"
+      - init
+  when: not restic_repo_config.stat.exists
+  changed_when: true
+
+- name: Deploy daily homelab critical-state backup script
+  ansible.builtin.template:
+    src: homelab-backup.sh.j2
+    dest: /usr/local/sbin/homelab-backup.sh
+    owner: root
+    group: root
+    mode: "0750"
+
+- name: Deploy weekly lightweight LXC vzdump script
+  ansible.builtin.template:
+    src: homelab-vzdump.sh.j2
+    dest: /usr/local/sbin/homelab-vzdump.sh
+    owner: root
+    group: root
+    mode: "0750"
+
+- name: Deploy systemd units for daily restic backup and weekly vzdump
+  ansible.builtin.template:
+    src: "{{ item }}.j2"
+    dest: "/etc/systemd/system/{{ item }}"
+    owner: root
+    group: root
+    mode: "0644"
+  loop:
+    - homelab-backup.service
+    - homelab-backup.timer
+    - homelab-vzdump.service
+    - homelab-vzdump.timer
+  notify: reload systemd daemon
+
+- name: Flush systemd daemon reload before enabling timers
+  ansible.builtin.meta: flush_handlers
+
+- name: Enable and start backup timers
+  ansible.builtin.systemd:
+    name: "{{ item }}"
+    enabled: true
+    state: started
+  loop:
+    - homelab-backup.timer
+    - homelab-vzdump.timer

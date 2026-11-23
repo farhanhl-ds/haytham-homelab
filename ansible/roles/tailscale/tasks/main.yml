@@ -1,0 +1,98 @@
+---
+- name: Verify /dev/net/tun is available in container
+  ansible.builtin.stat:
+    path: /dev/net/tun
+  register: tun_device
+
+- name: Fail clearly if /dev/net/tun passthrough is missing
+  ansible.builtin.fail:
+    msg: "/dev/net/tun missing inside CT 130. Run `ansible-playbook host_devices.yml` first."
+  when: not tun_device.stat.exists
+
+- name: Enable IPv4 and IPv6 forwarding for subnet routing
+  ansible.builtin.copy:
+    dest: /etc/sysctl.d/99-tailscale.conf
+    content: |
+      net.ipv4.ip_forward = 1
+      net.ipv6.conf.all.forwarding = 1
+    mode: "0644"
+  notify: reload sysctl
+
+- name: Flush sysctl handler immediately
+  ansible.builtin.meta: flush_handlers
+
+- name: Install prerequisites for Tailscale apt repo
+  ansible.builtin.apt:
+    name: [curl, ca-certificates, gnupg]
+    state: present
+    update_cache: true
+    cache_valid_time: 3600
+
+- name: Create apt keyrings directory
+  ansible.builtin.file:
+    path: /etc/apt/keyrings
+    state: directory
+    mode: "0755"
+
+- name: Download Tailscale GPG key
+  ansible.builtin.get_url:
+    url: "https://pkgs.tailscale.com/stable/ubuntu/{{ ansible_distribution_release }}.noarmor.gpg"
+    dest: /usr/share/keyrings/tailscale-archive-keyring.gpg
+    mode: "0644"
+
+- name: Add Tailscale apt repository
+  ansible.builtin.apt_repository:
+    repo: "deb [signed-by=/usr/share/keyrings/tailscale-archive-keyring.gpg] https://pkgs.tailscale.com/stable/ubuntu {{ ansible_distribution_release }} main"
+    state: present
+    filename: tailscale
+
+- name: Install Tailscale
+  ansible.builtin.apt:
+    name: [tailscale]
+    state: present
+    update_cache: true
+
+- name: Ensure tailscaled is enabled and started
+  ansible.builtin.systemd:
+    name: tailscaled
+    enabled: true
+    state: started
+
+- name: Check current Tailscale backend status
+  ansible.builtin.command:
+    argv: [tailscale, status, --json]
+  register: tailscale_status_raw
+  changed_when: false
+  failed_when: false
+
+- name: Parse Tailscale backend state
+  ansible.builtin.set_fact:
+    tailscale_backend_state: >-
+      {{ (tailscale_status_raw.stdout | from_json).BackendState
+         if (tailscale_status_raw.rc == 0 and (tailscale_status_raw.stdout | length) > 0)
+         else 'Unknown' }}
+
+- name: Bring Tailscale up non-interactively when authkey is provided
+  ansible.builtin.command:
+    argv:
+      - tailscale
+      - up
+      - "--authkey={{ tailscale_authkey }}"
+      - "--advertise-routes={{ tailscale_advertise_routes }}"
+      - "--accept-dns={{ tailscale_accept_dns | lower }}"
+  when:
+    - tailscale_backend_state != "Running"
+    - tailscale_authkey != "CHANGEME"
+    - (tailscale_authkey | length) > 0
+  no_log: true
+  changed_when: true
+
+- name: Remind operator of interactive auth step when no authkey is configured
+  ansible.builtin.debug:
+    msg: >-
+      Tailscale installed on CT 130. Authenticate once via SSH:
+      tailscale up --advertise-routes={{ tailscale_advertise_routes }} --accept-dns={{ tailscale_accept_dns | lower }}
+      Then approve {{ tailscale_advertise_routes }} in Tailscale Admin Console and set Split DNS for haytham.internal -> 192.168.100.11.
+  when:
+    - tailscale_backend_state != "Running"
+    - tailscale_authkey == "CHANGEME" or (tailscale_authkey | length) == 0

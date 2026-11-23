@@ -41,7 +41,8 @@
       DNS_BOGUS_PRIV=true
       DNSMASQ_LISTENING=all
       WEBPASSWORD={{ pihole_webpassword }}
-    mode: "0644"
+    mode: "0600"
+  no_log: true
   when: not pihole_installed.stat.exists
 
 - name: Download and run official unattended Pi-hole installer
@@ -63,12 +64,11 @@
   until: pihole_gravity.rc == 0
   when: not pihole_installed.stat.exists
 
-- name: Set web password (idempotent, v6 command)
+- name: Set web password (idempotent, v6 command — runs on rotation too)
   ansible.builtin.command:
     argv: [pihole, setpassword, "{{ pihole_webpassword }}"]
-  changed_when: true
+  changed_when: false
   no_log: true
-  when: not pihole_installed.stat.exists
 
 - name: Deploy wildcard DNS config (*.haytham.internal -> NPM)
   ansible.builtin.template:
@@ -77,8 +77,15 @@
     mode: "0644"
   notify: restart pihole-ftl
 
+- name: Check whether /etc/dnsmasq.d/ loading is enabled (Pi-hole v6)
+  ansible.builtin.command:
+    argv: [pihole-FTL, --config, misc.etc_dnsmasq_d]
+  register: pihole_dnsmasq_d_state
+  changed_when: false
+
 - name: Enable loading /etc/dnsmasq.d/ (disabled by default in Pi-hole v6)
   ansible.builtin.command:
     argv: [pihole-FTL, --config, misc.etc_dnsmasq_d, "true"]
+  when: pihole_dnsmasq_d_state.stdout | trim != "true"
   changed_when: true
   notify: restart pihole-ftl

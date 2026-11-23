@@ -1,6 +1,6 @@
 ---
 id: arch-persistence-design
-title: Persistence Design (ephemeral storage by default)
+title: Persistence Design and Two-Track Local Backup
 tier: "x"
 ctid: "n/a"
 ip: n/a
@@ -10,37 +10,38 @@ tags: [architecture, storage, backup, risk]
 retrievable: true
 ---
 
-# Persistence Design (ephemeral storage by default)
+# Persistence Design and Two-Track Local Backup
 
-## 1. Default behavior
+## 1. Storage reality
 
-All data lives **inside LXC rootfs / VM disk** unless a backup or external volume is explicitly built:
+Host `haytham` has a **single 1 TB SSD** (no RAID / ZFS redundancy — see `../decisions/ADR-003-no-truenas-paperless.md`). All active LXC data lives on `local-lvm` thin-provisioned rootfs volumes and is destroyed by `terraform destroy`.
 
-- Postgres `/var/lib/postgresql`, Redis dump, pgAdmin `./data`, Karakeep SQLite + `meili_data`, Vaultwarden SQLite, NPM SQLite (Proxy Hosts, certs, admin), HAOS config — all destroyed with `terraform destroy` / `qm destroy`.
-- `destroy` is safe for infra testing but **permanent data loss** for production data. Plan exports before any destroy on a loaded system.
+To achieve true **2-drive redundancy with zero cloud exposure and zero Samba shares**, Phase 1 ships with automated **Tier 80 local-network backups** (`../operations/backup-and-restore.md`):
+
+- **Track 1 (Critical small state — daily):** Proxmox `systemd` timer dumps Vaultwarden SQLite (online `.backup`), Immich Postgres (`pg_dumpall`), NPM SQLite, Pi-hole config, Homepage config, Uptime Kuma SQLite, and `/etc/pve/lxc/*.conf` into an encrypted local `restic` repository (`/var/backups/homelab/restic`, 7 daily / 4 weekly). Weekly `vzdump` snapshots cover lightweight LXCs (`110, 120, 130, 320, 440, 910`).
+- **Track 2 (Immich 500 GB original photos/videos — incremental SSH pull):** `scripts/pull-homelab-backups.sh` pulls both the Track 1 encrypted `restic` repo and Immich originals (`/opt/immich/library/{library,upload,profile}/`, excluding regeneratable `thumbs/` and `encoded-video/`) directly over SSH to the Windows workstation or an external USB drive.
 
 ## 2. Per-service blast radius
 
-| Service | Data at risk on destroy | Handling |
+| Service | Data at risk on destroy / SSD failure | Protection in Phase 1 |
 |---|---|---|
-| NPM | All Proxy Hosts, cert import, admin account | Recreate manually per `operations/build-from-scratch.md` |
-| pgAdmin | Server connection list (env preseed does not restore it) | Re-add manually: `192.168.100.21:5432` |
-| Vaultwarden | Vault items — **lockout risk** if this is the credential store | Export vault to encrypted file before destroy; highest backup priority |
-| Karakeep | Bookmarks (SQLite `/data`) | Manual re-entry until export automation exists |
-| Postgres/Redis | All databases | No dump automation in initial build |
-| HAOS | Automations/integrations/dashboards | No VM backup in initial build |
-| SSL cert | Safe — lives in `~/homelab-cert` outside containers | Migrate to Vaultwarden attachment after Tier 30 is up |
+| **Vaultwarden (`320`)** | Vault items — **P0 lockout risk** | Daily online SQLite `.backup` + attachments in encrypted `restic` (Track 1) + off-host PC pull |
+| **Immich (`610`)** | Up to 500 GB iPhone photos/videos + Postgres metadata | Daily `pg_dumpall` in Track 1 `restic` + incremental original media SSH pull to PC/USB (Track 2) |
+| **NPM (`120`)** | Proxy Hosts, imported cert, admin account | Daily tarball in Track 1 `restic` + weekly `vzdump` |
+| **Pi-hole (`110`)** | Blocklists, custom dnsmasq, query DB | Daily `/etc/pihole` + `/etc/dnsmasq.d` in Track 1 `restic` + weekly `vzdump` |
+| **Homepage (`440`)** | Custom `services.yaml` / `widgets.yaml` | Daily config tarball in Track 1 `restic` + weekly `vzdump` |
+| **Uptime Kuma (`910`)** | Monitor definitions & uptime history | Daily online SQLite `.backup` in Track 1 `restic` + weekly `vzdump` |
+| **Tailscale (`130`)** | Node identity (`tailscaled.state`) | Weekly `vzdump` (or quick re-auth via `tailscale up`) |
+| **SSL cert** | Safe — stored in `~/homelab-cert` + Windows backup + Vaultwarden attachment | Guard `.key`, `.crt`, `.cnf` outside containers |
 
 ## 3. Required practices from day one
 
-- Snapshot before risky updates: `pct snapshot <ctid> pre-update-YYYYMMDD` (see `operations/update-and-reboot.md`). Snapshots are rollback aids, not backups.
-- Vaultwarden export drill is P0 — credential-store loss is lockout, not inconvenience.
-- Before production use, decide: Proxmox Backup Server (Tier 80 reserved) vs externalized data volumes excluded from container lifecycle vs per-app export automation. Tracked in `roadmap/future-services.md`.
+- **Never run `terraform destroy` on a loaded host** (especially after migrating iPhone photos to CT `610`) without confirming both Track 1 (`restic check`) and Track 2 (`pull-homelab-backups.sh`) completed cleanly on your PC/USB drive.
+- **Snapshot before risky updates:** `pct snapshot <ctid> pre-update-YYYYMMDD` (see `../operations/update-and-reboot.md`). Snapshots are rollback aids, not off-host backups.
+- **Run a Vaultwarden restore drill** immediately after Phase 1 comes up (`../operations/backup-and-restore.md §6`).
+- **Offline emergency keys:** Keep `vault_restic_password` and Ansible `.vault_pass` on an offline/printed sheet or encrypted USB outside the `restic` repo.
 
 ## 4. FAQ
 
-**Q: Can I run build-from-scratch on a loaded system?**
-A: Only with manual exports first, or accept total data loss. Read the runbook destroy warning first.
-
-**Q: Why isn't durability in the initial build?**
-A: Build order is reproducibility first, durability second. The initial build proves `destroy + rebuild` is clean; backups attach to a known-good layout.
+**Q: Why aren't Immich's 500 GB photos copied into the local `restic` repo on Proxmox?**
+A: Copying 500 GB onto the same 1 TB SSD would consume the entire disk and still provide zero protection if that single SSD fails. Direct incremental SSH pull to a second physical drive solves both problems.

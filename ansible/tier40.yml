@@ -1,6 +1,13 @@
 ---
-- name: Karakeep
-  hosts: karakeep
+- name: Homepage
+  hosts: homepage
   become: true
   roles:
-    - karakeep
+    - homepage
+
+# NOTE: Karakeep play deferred until post-Phase 1 evaluation / 16 GB RAM (ADR-007).
+# - name: Karakeep
+#   hosts: karakeep
+#   become: true
+#   roles:
+#     - karakeep

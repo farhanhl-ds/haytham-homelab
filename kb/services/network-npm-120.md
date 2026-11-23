@@ -21,9 +21,9 @@ Reverse proxy + SSL termination for every HTTP service. Sole target of the Pi-ho
 | Field | Value |
 |---|---|
 | CTID / IP | 120 / `192.168.100.12` |
-| Resources | 1 core / 384 MB / 8 GB |
+| Resources | 1 core / 384 MB RAM / 512 MB swap / 8 GB disk |
 | Base | Ubuntu 24.04 LXC + Docker (via reusable `roles/docker`), `nesting=true`, unprivileged, `overlayfs` default |
-| Image | `jc21/nginx-proxy-manager` via compose |
+| Image | `jc21/nginx-proxy-manager:2.16.0` via compose |
 
 No `keyctl`, no `privileged`, no `vfs` — `nesting=true` with overlayfs is sufficient. See `../troubleshooting/docker-in-lxc.md`.
 
@@ -40,13 +40,17 @@ NPM stores everything in **SQLite inside the container** — destroyed with the 
 2. Import Custom Certificate `haytham-internal` (key+crt from `~/homelab-cert/`).
 3. Proxy Hosts (all: cert `haytham-internal`, Force SSL + HTTP/2):
 
-| Domain | Forward |
-|---|---|
-| `pihole.haytham.internal` | 192.168.100.11:80 (+ custom location `/` → `rewrite ^/$ /admin permanent;`) |
-| `npm.haytham.internal` | 192.168.100.12:81 |
-| `pgadmin.haytham.internal` | 192.168.100.23:80 |
-| `vaultwarden.haytham.internal` | 192.168.100.32:80 (+ Websockets Support ON) |
-| `karakeep.haytham.internal` | 192.168.100.42:3000 |
+| Domain | Forward | Extra Options |
+|---|---|---|
+| `haytham.internal` | `http://192.168.100.44:3000` | Homepage (root landing page) |
+| `pihole.haytham.internal` | `http://192.168.100.11:80` | Custom location `/` → `rewrite ^/$ /admin permanent;` |
+| `npm.haytham.internal` | `http://192.168.100.12:81` | NPM Admin UI |
+| `vaultwarden.haytham.internal` | `http://192.168.100.32:80` | **Websockets Support ON** |
+| `immich.haytham.internal` | `http://192.168.100.61:2283` | **Websockets Support ON** + Advanced: `client_max_body_size 50000M; proxy_read_timeout 600s; proxy_send_timeout 600s;` |
+| `uptime.haytham.internal` | `http://192.168.100.91:3001` | **Websockets Support ON** |
+| `pve.haytham.internal` | `https://192.168.100.2:8006` | **Scheme `https`** + **Websockets Support ON** (noVNC console) |
+
+*(Deferred hosts when revived: `pgadmin.haytham.internal → 192.168.100.23:80`, `karakeep.haytham.internal → 192.168.100.42:3000`.)*
 
 Pattern for every future HTTP service: add Proxy Host, reuse wildcard cert, no DNS change needed.
 

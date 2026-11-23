@@ -1,0 +1,6 @@
+---
+- name: Immich
+  hosts: immich
+  become: true
+  roles:
+    - immich

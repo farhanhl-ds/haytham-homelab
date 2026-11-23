@@ -24,16 +24,24 @@ Rotate the Ansible Vault master password and/or individual secrets. Covers the p
 
 ## 3. Rotate master password only (re-wrap same values)
 
+Because `group_vars/*.yml` uses **inline `!vault` strings** mixed with plaintext YAML (not whole-file encryption), `ansible-vault rekey` cannot be run directly on those files. To rotate the master vault password:
+
 ```bash
 cd ansible
-ansible-vault rekey group_vars/tier10.yml
-ansible-vault rekey group_vars/tier20.yml
-ansible-vault rekey group_vars/tier30.yml
-ansible-vault rekey group_vars/tier40.yml
-# update .vault_pass file to new password (gitignored, local only)
+cp .vault_pass .vault_pass.old
+openssl rand -base64 24 > .vault_pass.new && chmod 600 .vault_pass.new
+
+# For each vault_* variable across group_vars/{proxmox,tier10,tier20,tier30,tier40,tier60}.yml:
+# 1. Read current plaintext with .vault_pass.old:
+#    ansible localhost -m debug -a "var=vault_pihole_webpassword" -e @group_vars/tier10.yml --vault-password-file .vault_pass.old
+# 2. Re-encrypt with .vault_pass.new:
+#    ansible-vault encrypt_string '<plaintext>' --name 'vault_pihole_webpassword' --vault-password-file .vault_pass.new
+# 3. Replace the !vault block in group_vars/<group>.yml.
+# 4. Once all blocks are replaced:
+mv .vault_pass.new .vault_pass && rm -f .vault_pass.old
 ```
 
-No service restart needed (values unchanged, only wrapping changed).
+No service restart is needed when only the vault master password changes (decrypted values are unchanged).
 
 ## 4. Regenerate individual secrets (new values)
 

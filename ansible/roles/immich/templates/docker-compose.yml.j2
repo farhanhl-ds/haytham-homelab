@@ -1,0 +1,62 @@
+name: immich
+
+services:
+  immich-server:
+    container_name: immich_server
+    image: ghcr.io/immich-app/immich-server:${IMMICH_VERSION}
+{% if dri_device.stat.exists | default(false) %}
+    devices:
+      - /dev/dri:/dev/dri
+{% endif %}
+    volumes:
+      - ${UPLOAD_LOCATION}:/data
+      - /etc/localtime:/etc/localtime:ro
+    env_file:
+      - .env
+    ports:
+      - "{{ immich_port }}:2283"
+    depends_on:
+      - redis
+      - database
+    restart: unless-stopped
+    healthcheck:
+      disable: false
+
+  immich-machine-learning:
+    container_name: immich_machine_learning
+    image: ghcr.io/immich-app/immich-machine-learning:${IMMICH_VERSION}
+    volumes:
+      - model-cache:/cache
+    env_file:
+      - .env
+    restart: unless-stopped
+    healthcheck:
+      disable: false
+
+  redis:
+    container_name: immich_redis
+    image: {{ immich_valkey_image }}
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "redis-cli ping | grep -q PONG || exit 1"]
+
+  database:
+    container_name: immich_postgres
+    image: {{ immich_postgres_image }}
+    environment:
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+      POSTGRES_USER: ${DB_USERNAME}
+      POSTGRES_DB: ${DB_DATABASE_NAME}
+      POSTGRES_INITDB_ARGS: "--data-checksums"
+    volumes:
+      - ${DB_DATA_LOCATION}:/var/lib/postgresql/data
+    shm_size: 128mb
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USERNAME} -d ${DB_DATABASE_NAME}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  model-cache:

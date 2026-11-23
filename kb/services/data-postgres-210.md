@@ -4,13 +4,15 @@ title: Postgres — Tier 20 Data (CTID 210)
 tier: "20"
 ctid: "210"
 ip: 192.168.100.21
-status: planned
+status: reserved
 last_verified: unreleased
 tags: [postgres, database, tier20, data]
 retrievable: true
 ---
 
 # Postgres — Tier 20 Data (CTID 210)
+
+> **Status: Deferred (`enabled = false` in `terraform/locals.tf`)** until an active app requires shared Postgres or after the 16 GB RAM upgrade — see `../decisions/ADR-007-lean-8gb-phase1.md`.
 
 ## 1. Purpose
 

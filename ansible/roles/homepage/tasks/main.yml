@@ -1,0 +1,30 @@
+---
+- name: Create Homepage config directory
+  ansible.builtin.file:
+    path: "{{ homepage_data_dir }}/config"
+    state: directory
+    mode: "0755"
+
+- name: Deploy Homepage compose file
+  ansible.builtin.template:
+    src: docker-compose.yml.j2
+    dest: "{{ homepage_data_dir }}/docker-compose.yml"
+    mode: "0644"
+  notify: restart homepage
+
+- name: Seed Homepage configuration files (initial defaults, preserve user edits)
+  ansible.builtin.template:
+    src: "{{ item }}.j2"
+    dest: "{{ homepage_data_dir }}/config/{{ item }}"
+    mode: "0644"
+    force: false
+  loop:
+    - settings.yaml
+    - services.yaml
+    - bookmarks.yaml
+    - widgets.yaml
+
+- name: Bring Homepage up
+  community.docker.docker_compose_v2:
+    project_src: "{{ homepage_data_dir }}"
+    state: present

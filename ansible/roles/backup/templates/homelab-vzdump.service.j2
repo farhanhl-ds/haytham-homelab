@@ -1,0 +1,9 @@
+[Unit]
+Description=Haytham Homelab Weekly Lightweight LXC vzdump
+After=network-online.target pve-cluster.service
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/sbin/homelab-vzdump.sh
+Nice=10
+IOSchedulingClass=idle

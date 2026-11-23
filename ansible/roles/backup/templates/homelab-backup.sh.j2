@@ -1,0 +1,91 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+# Track 1: Daily critical-state backup on Proxmox host `haytham`.
+# Dumps active DBs safely (online SQLite backup + Immich pg_dumpall) and
+# configs into an encrypted local restic repo. Off-host sync is pulled from
+# Windows/WSL via scripts/pull-homelab-backups.sh (zero cloud, zero Samba).
+
+STAGING="{{ backup_staging_dir }}"
+REPO="{{ backup_restic_repo }}"
+PASS_FILE="{{ backup_restic_password_file }}"
+
+ct_running() {
+  pct status "$1" 2>/dev/null | grep -q "status: running"
+}
+
+sqlite_hot_backup() {
+  local ctid="$1"
+  local src_db="$2"
+  local dst_file="$3"
+  pct exec "$ctid" -- python3 -c "
+import os, sqlite3, sys
+src_path = sys.argv[1]
+if not os.path.exists(src_path):
+    sys.exit(0)
+tmp_path = '/tmp/online-backup.sqlite3'
+if os.path.exists(tmp_path):
+    os.remove(tmp_path)
+src = sqlite3.connect(src_path)
+dst = sqlite3.connect(tmp_path)
+with dst:
+    src.backup(dst)
+dst.close()
+src.close()
+" "$src_db"
+  if pct exec "$ctid" -- test -f /tmp/online-backup.sqlite3; then
+    pct pull "$ctid" /tmp/online-backup.sqlite3 "$dst_file"
+    pct exec "$ctid" -- rm -f /tmp/online-backup.sqlite3
+  fi
+}
+
+rm -rf "${STAGING:?}"/*
+mkdir -p "$STAGING"/{pihole,npm,vaultwarden,homepage,immich,uptime-kuma,proxmox}
+
+echo "[backup] Proxmox LXC configs (/etc/pve/lxc)"
+cp -a /etc/pve/lxc/*.conf "$STAGING/proxmox/" 2>/dev/null || true
+
+if ct_running 110; then
+  echo "[backup] CT 110 Pi-hole config"
+  pct exec 110 -- tar -czf - -C / etc/pihole etc/dnsmasq.d > "$STAGING/pihole/pihole-config.tar.gz"
+fi
+
+if ct_running 120; then
+  echo "[backup] CT 120 NPM data"
+  pct exec 120 -- tar -czf - -C /opt/npm data letsencrypt docker-compose.yml > "$STAGING/npm/npm-data.tar.gz"
+fi
+
+if ct_running 320; then
+  echo "[backup] CT 320 Vaultwarden (P0: online SQLite hot backup + attachments/keys)"
+  sqlite_hot_backup 320 /opt/vaultwarden/vw-data/db.sqlite3 "$STAGING/vaultwarden/db.sqlite3"
+  pct exec 320 -- tar -czf - --exclude='vw-data/db.sqlite3*' -C /opt/vaultwarden vw-data docker-compose.yml > "$STAGING/vaultwarden/vw-files.tar.gz"
+fi
+
+if ct_running 440; then
+  echo "[backup] CT 440 Homepage config"
+  pct exec 440 -- tar -czf - -C /opt/homepage config docker-compose.yml > "$STAGING/homepage/homepage-config.tar.gz"
+fi
+
+if ct_running 610; then
+  echo "[backup] CT 610 Immich PostgreSQL dump + compose/env (originals synced via Track 2 rsync)"
+  pct exec 610 -- docker exec immich_postgres pg_dumpall --clean --if-exists --username=postgres | gzip -c > "$STAGING/immich/immich-postgres.sql.gz"
+  pct exec 610 -- tar -czf - -C /opt/immich docker-compose.yml .env > "$STAGING/immich/immich-compose.tar.gz"
+fi
+
+if ct_running 910; then
+  echo "[backup] CT 910 Uptime Kuma (online SQLite hot backup + data)"
+  sqlite_hot_backup 910 /opt/uptime-kuma/data/kuma.db "$STAGING/uptime-kuma/kuma.db"
+  pct exec 910 -- tar -czf - --exclude='data/kuma.db*' -C /opt/uptime-kuma data docker-compose.yml > "$STAGING/uptime-kuma/uptime-kuma-files.tar.gz"
+fi
+
+echo "[backup] Committing staging directory to encrypted restic repo"
+restic -r "$REPO" --password-file "$PASS_FILE" backup "$STAGING" --tag homelab-daily
+
+echo "[backup] Pruning old restic snapshots (daily={{ backup_keep_daily }}, weekly={{ backup_keep_weekly }})"
+restic -r "$REPO" --password-file "$PASS_FILE" forget \
+  --keep-daily "{{ backup_keep_daily }}" \
+  --keep-weekly "{{ backup_keep_weekly }}" \
+  --prune
+
+rm -rf "${STAGING:?}"/*
+echo "[backup] Track 1 backup complete."

@@ -4,13 +4,15 @@ title: Karakeep — Tier 40 App (CTID 420)
 tier: "40"
 ctid: "420"
 ip: 192.168.100.42
-status: planned
+status: reserved
 last_verified: unreleased
 tags: [karakeep, bookmarks, tier40, docker, meilisearch]
 retrievable: true
 ---
 
 # Karakeep — Tier 40 App (CTID 420)
+
+> **Status: Deferred (`enabled = false` in `terraform/locals.tf`)** pending post-Phase 1 evaluation (keep vs. lightweight alternative) or 16 GB RAM upgrade — see `../decisions/ADR-007-lean-8gb-phase1.md`.
 
 ## 1. Purpose
 

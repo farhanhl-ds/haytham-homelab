@@ -1,0 +1,9 @@
+[Unit]
+Description=Run Haytham Homelab Weekly Lightweight LXC vzdump
+
+[Timer]
+OnCalendar={{ backup_vzdump_schedule_oncalendar }}
+Persistent=true
+
+[Install]
+WantedBy=timers.target

@@ -20,7 +20,7 @@ resource "proxmox_virtual_environment_container" "this" {
 
   memory {
     dedicated = var.memory_mb
-    swap      = 0
+    swap      = var.swap_mb
   }
 
   disk {
@@ -60,8 +60,13 @@ resource "proxmox_virtual_environment_container" "this" {
 
   lifecycle {
     # Changing the SSH key/password in initialization makes the provider want
-    # to replace the container. This is ignored so key/password updates don't
-    # accidentally destroy containers that already hold data.
-    ignore_changes = [initialization[0].user_account]
+    # to replace the container. Device passthrough (/dev/net/tun, /dev/dri) is
+    # managed via Proxmox host Ansible (host_devices.yml) because non-root API
+    # tokens receive HTTP 403 on device_passthrough. Ignore both so apply never
+    # destroys containers or strips host-managed devices.
+    ignore_changes = [
+      initialization[0].user_account,
+      device_passthrough,
+    ]
   }
 }

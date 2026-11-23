@@ -1,0 +1,7 @@
+---
+# Tier 80 · Backup & DR (host-managed on Proxmox `haytham`).
+- name: Configure Proxmox host automated backups
+  hosts: proxmox
+  become: true
+  roles:
+    - backup

@@ -24,3 +24,5 @@ services:
   browserless:
     image: {{ browserless_image }}
     restart: unless-stopped
+    environment:
+      TOKEN: {{ karakeep_browser_token }}

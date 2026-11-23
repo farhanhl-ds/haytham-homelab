@@ -6,6 +6,10 @@
 pihole_domain: pihole.haytham.internal
 npm_domain: npm.haytham.internal
 npm_ip: 192.168.100.12
+tailscale_advertise_routes: "192.168.100.0/24"
+# Optional: encrypt a reusable/one-off Tailscale auth key via ansible-vault encrypt_string.
+# Leave as CHANGEME to authenticate interactively via `tailscale up` on CT 130.
+vault_tailscale_authkey: CHANGEME
 
 vault_pihole_webpassword: !vault |
           $ANSIBLE_VAULT;1.1;AES256

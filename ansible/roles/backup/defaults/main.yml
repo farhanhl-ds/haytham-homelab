@@ -1,0 +1,24 @@
+---
+# Host-managed Tier 80 automated backups (Proxmox `haytham`).
+# Track 1: Daily encrypted restic repo for critical small app state + DB dumps.
+# Track 2: Immich 500 GB originals synced off-host directly via scripts/pull-homelab-backups.sh.
+# kb/operations/backup-and-restore.md
+backup_base_dir: /var/backups/homelab
+backup_restic_repo: "{{ backup_base_dir }}/restic"
+backup_staging_dir: "{{ backup_base_dir }}/staging"
+backup_config_dir: /etc/homelab-backup
+backup_restic_password_file: "{{ backup_config_dir }}/restic.pass"
+backup_restic_password: "{{ vault_restic_password }}"
+backup_keep_daily: 7
+backup_keep_weekly: 4
+backup_schedule_oncalendar: "*-*-* 03:00:00"
+backup_vzdump_schedule_oncalendar: "Sun *-*-* 03:30:00"
+backup_vzdump_storage: local
+backup_vzdump_keep_last: 2
+backup_vzdump_ctids:
+  - 110
+  - 120
+  - 130
+  - 320
+  - 440
+  - 910

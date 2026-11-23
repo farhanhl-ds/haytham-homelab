@@ -1,0 +1,20 @@
+---
+# Proxmox host-side LXC device passthrough.
+# Managed via Ansible on `haytham` (root@192.168.100.2) because Proxmox VE
+# blocks non-root API tokens (terraform@pve!terraform) from setting devX via REST.
+pve_device_mappings:
+  - ctid: 130
+    name: tailscale
+    dev_slot: dev0
+    device_path: /dev/net/tun
+    dev_spec: "/dev/net/tun,mode=0666"
+  - ctid: 610
+    name: immich-render
+    dev_slot: dev0
+    device_path: /dev/dri/renderD128
+    dev_spec: "/dev/dri/renderD128,gid=104,mode=0660"
+  - ctid: 610
+    name: immich-card
+    dev_slot: dev1
+    device_path: /dev/dri/card0
+    dev_spec: "/dev/dri/card0,gid=44,mode=0660"

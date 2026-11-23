@@ -1,0 +1,9 @@
+[Unit]
+Description=Haytham Homelab Daily Critical-State Backup (Track 1 restic)
+After=network-online.target pve-cluster.service
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/sbin/homelab-backup.sh
+Nice=10
+IOSchedulingClass=best-effort

@@ -10,3 +10,9 @@
   become: true
   roles:
     - npm
+
+- name: Tailscale
+  hosts: tailscale
+  become: true
+  roles:
+    - tailscale

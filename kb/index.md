@@ -29,14 +29,17 @@ retrievable: true
 | Area | Entry point |
 |---|---|
 | Architecture | `architecture/overview.md` |
-| Tier 10 Network (Pi-hole 110, NPM 120) | `services/network-pihole-110.md`, `services/network-npm-120.md` |
-| Tier 20 Data (Postgres 210, Redis 220, pgAdmin 230) | `services/data-postgres-210.md` |
+| Lean 8 GB Scope (ADR-007) | `decisions/ADR-007-lean-8gb-phase1.md` |
+| Tier 10 Network (Pi-hole 110, NPM 120, Tailscale 130) | `services/network-pihole-110.md`, `services/network-npm-120.md`, `services/network-tailscale-130.md` |
 | Tier 30 Identity (Vaultwarden 320) | `services/identity-vaultwarden-320.md` |
-| Tier 40 App (Karakeep 420) | `services/app-karakeep-420.md` |
-| VM 100 HAOS (.3) | `services/vm-haos-100.md` |
+| Tier 40 App (Homepage 440; Karakeep 420 deferred) | `services/app-homepage-440.md` |
+| Tier 60 Media (Immich 610) | `services/media-immich-610.md` |
+| Tier 80 Backup (Host `restic` + WSL SSH pull) | `operations/backup-and-restore.md` |
+| Tier 90 Observability (Uptime Kuma 910) | `services/obs-uptime-kuma-910.md` |
+| Deferred (Tier 20 Data 210/220/230, Karakeep 420, VM 100 HAOS) | `services/data-postgres-210.md`, `services/app-karakeep-420.md`, `services/vm-haos-100.md` |
 | Build order | `roadmap/build-sequence.md` |
-| Future / reserved | `roadmap/future-services.md` |
-| Persistence | `architecture/persistence-design.md` |
+| Deferred & future services | `roadmap/future-services.md` |
+| Persistence & backups | `architecture/persistence-design.md` |
 
 ## Map
 

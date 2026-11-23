@@ -4,13 +4,15 @@ title: pgAdmin — Tier 20 Admin (CTID 230)
 tier: "20"
 ctid: "230"
 ip: 192.168.100.23
-status: planned
+status: reserved
 last_verified: unreleased
 tags: [pgadmin, postgres, tier20, docker]
 retrievable: true
 ---
 
 # pgAdmin — Tier 20 Admin (CTID 230)
+
+> **Status: Deferred (`enabled = false` in `terraform/locals.tf`)** alongside shared Postgres (`210`) — see `../decisions/ADR-007-lean-8gb-phase1.md`.
 
 ## 1. Purpose
 

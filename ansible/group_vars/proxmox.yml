@@ -1,0 +1,24 @@
+---
+# Proxmox host (`haytham`) — LXC device passthrough + Tier 80 automated backups.
+# SECRET BOOTSTRAP: replace CHANGEME with ansible-vault encrypt_string output:
+#   SECRET=$(openssl rand -base64 32 | tr -dc 'a-zA-Z0-9' | head -c 32)
+#   ansible-vault encrypt_string "$SECRET" --name 'vault_restic_password'
+#   unset SECRET; history -c
+backup_base_dir: /var/backups/homelab
+backup_restic_repo: "{{ backup_base_dir }}/restic"
+backup_staging_dir: "{{ backup_base_dir }}/staging"
+backup_keep_daily: 7
+backup_keep_weekly: 4
+backup_schedule_oncalendar: "*-*-* 03:00:00"
+backup_vzdump_schedule_oncalendar: "Sun *-*-* 03:30:00"
+backup_vzdump_storage: local
+backup_vzdump_keep_last: 2
+backup_vzdump_ctids:
+  - 110
+  - 120
+  - 130
+  - 320
+  - 440
+  - 910
+
+vault_restic_password: CHANGEME

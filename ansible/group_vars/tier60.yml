@@ -1,0 +1,12 @@
+---
+# Tier 60 — media layer (Immich self-contained bundle).
+# SECRET BOOTSTRAP: replace CHANGEME with ansible-vault encrypt_string output:
+#   SECRET=$(openssl rand -base64 32 | tr -dc 'a-zA-Z0-9' | head -c 32)
+#   ansible-vault encrypt_string "$SECRET" --name 'vault_immich_db_password'
+#   unset SECRET; history -c
+immich_version: v3.4.2
+immich_timezone: Asia/Jakarta
+immich_ml_workers: 1
+immich_ml_request_threads: 2
+
+vault_immich_db_password: CHANGEME

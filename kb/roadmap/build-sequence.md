@@ -14,36 +14,42 @@ retrievable: true
 
 > This is the single chronological document in the KB. All other pages are timeless. Build strictly in this order; each step gates the next.
 
-## Phase 1 — Foundation (Proxmox + network)
+## Phase 1 — Foundation (Proxmox + Lean 8 GB Core)
 
-1. Install Proxmox, host `haytham` at `192.168.100.2`, `vmbr0`, `local` + `local-lvm`.
-2. Shrink router DHCP pool to `.100-.254`. Add reservation MAC `BC:24:11:D7:75:C0` → `.3`.
+1. Install Proxmox on `haytham` (`192.168.100.2`, i5 7th gen / 8 GB RAM / 1 TB SSD), `vmbr0`, `local` + `local-lvm`.
+2. Shrink router DHCP pool to `.100-.254`. (Reserve MAC `BC:24:11:D7:75:C0` → `.3` if preparing for future HAOS.)
 3. Download Ubuntu 24.04 CT template via GUI. Create `terraform@pve!terraform` with the four role grants.
 4. Generate wildcard cert (`architecture/ssl-strategy.md`). Keep key/crt/cnf in `~/homelab-cert/` + Windows backup.
-5. `terraform apply` — 7 LXC. Workstation DNS in safe mode (public first).
+5. `terraform apply` — provisions 7 active Phase 1 LXCs (`110, 120, 130, 320, 440, 610, 910`). Workstation DNS in safe mode (public first).
+6. `ansible-playbook host_devices.yml` — attaches `/dev/net/tun` to CT `130` and `/dev/dri/*` to CT `610`.
 
-## Phase 2 — Data + identity
+## Phase 2 — Network, Identity & Dashboard
 
-6. `ansible-playbook tier10.yml` → verify `dig @192.168.100.11`.
-7. `tier20.yml` → verify `psql`, `redis-cli ping`, pgAdmin login.
-8. `tier30.yml` → Vaultwarden signup → lock signups → re-run. Migrate cert + vault password to Vaultwarden attachments; remove loose copies.
-9. Manual NPM: admin → cert import → 5 Proxy Hosts → pihole rewrite → websockets ON.
+7. `ansible-playbook tier10.yml` → verify `dig @192.168.100.11` and authenticate Tailscale subnet router (`192.168.100.0/24`) + Split DNS (`haytham.internal → 192.168.100.11`).
+8. `ansible-playbook tier30.yml` → Vaultwarden signup → lock `SIGNUPS_ALLOWED="false"` → re-run. Migrate cert + vault/restic passwords to Vaultwarden attachments + offline emergency sheet.
+9. `ansible-playbook tier40.yml` → Homepage at `192.168.100.44:3000`.
+10. Manual NPM: admin account → import wildcard cert → create all 7 Proxy Hosts (`services/network-npm-120.md §4`).
 
-## Phase 3 — Apps + VM
+## Phase 3 — Media, Observability & Automated Backups
 
-10. `tier40.yml` (Karakeep) → E2E `save → thumbnail → search` over `https://karakeep.haytham.internal`.
-11. Manual VM100 HAOS (`qm` + GUI attach) → `http://192.168.100.3:8123` → onboarding.
-12. Workstation DNS to normal mode (Pi-hole first). Browser sweep of all five HTTPS URLs + HAOS.
-13. Acceptance: every playbook `failed=0`, verification block in `operations/build-from-scratch.md` green.
+11. `ansible-playbook tier60.yml` → Immich (`CT 610`, 500 GB) → enable Intel Quick Sync in Admin UI → test photo + video upload over `https://immich.haytham.internal`.
+12. `ansible-playbook tier90.yml` → Uptime Kuma (`CT 910`) → add monitors for all active services.
+13. `ansible-playbook tier80.yml` → trigger `systemctl start homelab-backup.service`, verify `restic snapshots`, and configure Windows Task Scheduler to run `scripts/pull-homelab-backups.sh` (Track 1 + Track 2).
+14. Run Vaultwarden restore drill (`operations/backup-and-restore.md §6`) — P0 acceptance gate.
+15. Switch workstation DNS to normal mode (Pi-hole first). Browser + Tailscale cellular sweep of all 7 HTTPS URLs.
+16. Begin iPhone photo migration via Immich iOS app / `immich-go` and verify first Track 2 off-host photo sync to PC/USB.
 
-## Phase 4 — Hardening (after green build)
+## Phase 4 — Post-16 GB RAM Upgrade & Future Expansion
 
-14. Vaultwarden export drill (P0).
-15. Decide persistence: PBS (Tier 80) vs external volumes vs per-app exports.
-16. Router Primary DNS → `.11` cutover (multi-device need + Secondary policy).
-17. Next apps from `future-services.md` in dependency order.
+17. Upgrade `haytham` RAM from 8 GB → 16 GB.
+18. Router Primary DNS → `.11` cutover (multi-device LAN adblock + internal DNS).
+19. Revive deferred workloads as needed (`ADR-007`):
+    - **HAOS (VM 100, `.3`):** manual `qm` build (`services/vm-haos-100.md`).
+    - **Karakeep (`420`)** or lighter bookmark alternative (e.g., Linkding).
+    - **Tier 20 (`210/220/230`)** once an app actually consumes shared Postgres/Redis (e.g., Outline).
+20. Next apps from `future-services.md` in dependency order.
 
 ## FAQ
 
-**Q: Can I skip ahead (e.g. Karakeep before Pi-hole)?**
-A: No. DNS → proxy → data → identity → app is a dependency chain, not a suggestion.
+**Q: Can I skip `host_devices.yml` before `tier10.yml` and `tier60.yml`?**
+A: No. Tailscale fails without `/dev/net/tun`, and Immich skips Intel Quick Sync without `/dev/dri/renderD128`.

@@ -1,0 +1,58 @@
+---
+- name: Verify target host device paths exist on Proxmox host
+  ansible.builtin.stat:
+    path: "{{ item.device_path }}"
+  loop: "{{ pve_device_mappings }}"
+  register: pve_dev_stats
+
+- name: Read current LXC configs for device-mapped containers
+  ansible.builtin.command:
+    argv: [pct, config, "{{ item }}"]
+  loop: "{{ pve_device_mappings | map(attribute='ctid') | unique | list }}"
+  register: pve_ct_configs
+  changed_when: false
+
+- name: Build CT config lookup map
+  ansible.builtin.set_fact:
+    pve_ct_config_map: >-
+      {{ dict(pve_ct_configs.results | map(attribute='item')
+         | zip(pve_ct_configs.results | map(attribute='stdout'))) }}
+
+- name: Detect container render GID inside CT 610 (Ubuntu 24.04)
+  ansible.builtin.command:
+    argv: [pct, exec, "610", "--", getent, group, render]
+  register: immich_render_group
+  changed_when: false
+  failed_when: false
+
+- name: Set dynamic render GID fact (fallback 104)
+  ansible.builtin.set_fact:
+    immich_render_gid: >-
+      {{ (immich_render_group.stdout.split(':')[2])
+         if (immich_render_group.rc == 0 and (immich_render_group.stdout.split(':') | length) > 2)
+         else '104' }}
+
+- name: Configure LXC device passthrough via pct set
+  ansible.builtin.command:
+    argv:
+      - pct
+      - set
+      - "{{ item.ctid | string }}"
+      - "-{{ item.dev_slot }}"
+      - "{{ item.dev_spec | replace('gid=104', 'gid=' ~ immich_render_gid) }}"
+  loop: "{{ pve_device_mappings }}"
+  when: >-
+    (pve_dev_stats.results | selectattr('item.device_path', 'equalto', item.device_path)
+     | map(attribute='stat.exists') | first)
+    and ((item.dev_slot ~ ': ' ~ item.device_path) not in pve_ct_config_map[item.ctid])
+  register: pve_dev_changed
+  changed_when: true
+
+- name: Reboot containers whose device mappings changed
+  ansible.builtin.command:
+    argv: [pct, reboot, "{{ item }}"]
+  loop: >-
+    {{ pve_dev_changed.results
+       | selectattr('changed', 'equalto', true)
+       | map(attribute='item.ctid') | unique | list }}
+  changed_when: true

@@ -1,0 +1,9 @@
+---
+# Configure Proxmox host-side LXC device passthrough (/dev/net/tun for Tailscale
+# CT 130, /dev/dri/* for Immich CT 610). Run right after `terraform apply` and
+# before tier playbooks.
+- name: Configure Proxmox LXC device passthrough
+  hosts: proxmox
+  become: true
+  roles:
+    - pve_devices
