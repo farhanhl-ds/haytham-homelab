@@ -1,71 +1,92 @@
 # Haytham Homelab
 
-Single-node Proxmox VE homelab on a **Lenovo ThinkCentre M910q Tiny** (**Intel Core i5 7th gen / HD 630 Quick Sync, 8 GB RAM → 16 GB planned, 1 TB SSD**). Infrastructure as Code with Terraform (LXC shells) and Ansible (host devices, app configuration, automated backups).
+A self-hosted home server running on a single quiet, low-power **Lenovo ThinkCentre M910q Tiny** — providing private photo backup, password management, network-wide ad blocking, remote VPN access, and automated zero-cloud backups, all provisioned reproducibly from code.
+
+## Why I Built This
+
+I wanted full ownership of my everyday personal data (especially family photos and passwords) without paying recurring cloud subscriptions or maintaining a fragile, click-ops server. Every container, service, and backup schedule in this repository is defined as Infrastructure as Code (**Terraform + Ansible**) and backed by a structured knowledge base so the entire lab can be rebuilt cleanly from scratch.
+
+## Hardware at a Glance
+
+| Component | Spec |
+|---|---|
+| **Machine** | Lenovo ThinkCentre M910q Tiny |
+| **CPU / GPU** | Intel Core i5 (7th Gen, 4c/4t) with Intel HD 630 Quick Sync (hardware video transcoding) |
+| **Memory** | 8 GB RAM *(tuned lean; upgrade to 16 GB planned)* |
+| **Storage** | 1 TB SSD |
+| **Hypervisor** | Proxmox VE (single-node) |
+
+## What's Running
+
+All services run inside lightweight Linux containers (LXCs) — one service per container — behind clean internal HTTPS URLs (`*.haytham.internal`):
+
+| Service | What It Does | Replaces |
+|---|---|---|
+| **Immich** | Private photo & video backup with Intel Quick Sync transcoding and mobile auto-sync | Google Photos / iCloud Photos |
+| **Vaultwarden** | Self-hosted, Bitwarden-compatible password manager | Cloud password managers |
+| **Pi-hole** | Network-wide ad blocking and internal DNS resolver (`*.haytham.internal`) | ISP DNS / per-device ad blockers |
+| **Nginx Proxy Manager** | Reverse proxy providing HTTPS with a single wildcard TLS certificate | Remembering raw `IP:port` URLs |
+| **Tailscale** | Private WireGuard VPN into the home network with zero open router ports | Port forwarding / exposed services |
+| **Homepage** | Unified start-page dashboard (`https://haytham.internal`) | Scattered bookmarks |
+| **Uptime Kuma** | Real-time service health checks and downtime monitoring | Finding out something broke too late |
+| **Automated Backups** | Daily encrypted snapshots (`restic`), weekly container snapshots (`vzdump`), and off-host SSH sync | Third-party cloud backup services |
+
+*Ready to enable after a 16 GB RAM upgrade (preserved in-repo): Home Assistant OS, shared PostgreSQL/Redis + pgAdmin, and Karakeep.*
 
 ## Architecture
 
+```mermaid
+flowchart LR
+    subgraph Control["Control Node (Linux devbox / WSL)"]
+        TF["Terraform\n(Provisions LXC shells,\nIPs, CPU/RAM/disk)"]
+        ANS["Ansible\n(Device passthrough,\nDocker apps, backup timers)"]
+    end
+
+    subgraph PVE["Proxmox VE Host (haytham · 8 GB RAM · 1 TB SSD)"]
+        NET["Ingress & VPN\nPi-hole · NPM · Tailscale"]
+        APPS["Core Services\nVaultwarden · Homepage\nImmich (Quick Sync) · Uptime Kuma"]
+        BKP["Host Backup Timers\nEncrypted restic + vzdump"]
+    end
+
+    OFFHOST["Off-Host Storage\n(PC / External USB)\nPulled over SSH (Zero Cloud)"]
+
+    TF --> PVE
+    ANS --> PVE
+    NET --> APPS
+    APPS --> BKP
+    BKP -->|"Encrypted state (rsync/SSH)"| OFFHOST
+    APPS -->|"Immich photo originals (rsync/SSH)"| OFFHOST
 ```
-Terraform (bpg/proxmox)     →     Ansible (WSL control node)
-LXC shell, CPU/RAM/swap     →     Host device passthrough (/dev/net/tun, /dev/dri)
-Network + static IP         →     Package install, Docker Compose, app config
-Cloud-init user + SSH key   →     Automated local-network backups (restic + vzdump)
-```
 
-Terraform stops when each container exists with the correct IP and is SSH-reachable. Everything after is Ansible (one role per app, idempotent).
+## Key Design Principles
 
-## Phase 1 Tier Map (Lean 8 GB Stack — `ADR-007`)
+- **Reproducible by default:** Terraform handles the container lifecycle and stops once each container is reachable over SSH; idempotent Ansible roles take over from there.
+- **Lean by design on 8 GB RAM:** Running Linux containers instead of heavy VMs keeps steady-state usage around ~3.1 GB RAM, leaving ~4.5 GB headroom for Immich uploads and ML jobs.
+- **Zero-cloud, zero-port-forwarding security:** Remote access runs exclusively over Tailscale, backups are encrypted locally and pulled over SSH (no cloud uploads, no SMB/Samba shares), and all secrets stay out of Git (inline Ansible Vault encryption + gitignored local state).
+- **Documented once, linked everywhere:** Operational runbooks, Architecture Decision Records (ADRs), and per-service specs live in [`kb/`](kb/index.md) so documentation stays in sync with the infrastructure.
 
-| Tier | Scope | Active Services | CTIDs | IPs |
-|---|---|---|---|---|
-| 10 | Network / Ingress | Pi-hole, NPM, Tailscale | 110, 120, 130 | .11, .12, .13 |
-| 30 | Identity & Access | Vaultwarden | 320 | .32 |
-| 40 | Application | Homepage (root `haytham.internal`) | 440 | .44 |
-| 60 | Media | Immich (500 GB, Intel Quick Sync) | 610 | .61 |
-| 80 | Backup & DR | Host `restic` + `vzdump` + WSL SSH pull | host | .2 |
-| 90 | Observability | Uptime Kuma | 910 | .91 |
+## AI-Assisted Operations
 
-*Deferred until 16 GB RAM upgrade or concrete DB consumer (preserved in-repo): Tier 20 (`210` Postgres, `220` Redis, `230` pgAdmin), Karakeep (`420`), HAOS (`VM 100`).*
+This repository is structured for both humans and AI coding assistants:
 
-Domain base: `haytham.internal` (RFC 9476). Wildcard `*.haytham.internal → NPM (.12)` via Pi-hole DNS (and Tailscale Split DNS remotely). One self-signed wildcard cert reused across all NPM Proxy Hosts.
+- **[`AGENTS.md`](AGENTS.md)** provides a lightweight, always-on summary of host facts, safety guardrails (such as never printing secrets or destroying disks without confirmation), and a routing map so an AI assistant never has to bulk-read the entire knowledge base.
+- **[`.agents/skills/`](.agents/skills/)** defines five on-demand operational skills (`homelab-rebuild`, `homelab-backup-restore`, `homelab-add-service`, `homelab-secret-rotation`, and `homelab-update-reboot`) that load step-by-step runbooks only when needed.
+- **[`kb/`](kb/index.md)** is authored with YAML frontmatter and focused single-topic Markdown files so it can also be indexed directly for RAG / Q&A.
 
-## Directory Layout
+## Repository Layout
 
-```
+```text
 haytham-homelab/
+├── AGENTS.md                  # AI guardrails, canonical facts & KB routing map
+├── .agents/skills/            # On-demand AI runbook skills (rebuild, backup, updates, etc.)
 ├── terraform/                 # Proxmox LXC provisioning (bpg/proxmox)
-│   ├── locals.tf              # Container definitions (enabled flag + swap)
-│   ├── containers.tf          # Per-tier module calls (10/20/30/40/60/90)
-│   └── modules/lxc/           # Reusable LXC module
-├── ansible/                   # App & host configuration
-│   ├── host_devices.yml       # Proxmox /dev/net/tun & /dev/dri passthrough
-│   ├── tier{10,20,30,40,60,80,90}.yml
-│   ├── group_vars/            # Per-group vars + inline !vault secrets
-│   └── roles/                 # docker, pve_devices, pihole, npm, tailscale,
-│                              # vaultwarden, homepage, immich, uptime_kuma,
-│                              # backup (+ deferred postgres, redis, pgadmin, karakeep)
-├── scripts/
-│   └── pull-homelab-backups.sh  # Off-host WSL SSH pull (zero cloud, zero Samba)
-└── kb/                        # Canonical Knowledge Base (RAG-ready Markdown)
+├── ansible/                   # Host device passthrough, app roles & backup timers
+├── scripts/                   # Off-host SSH backup pull script (zero cloud, zero Samba)
+└── kb/                        # Canonical Knowledge Base (architecture, ADRs, services, runbooks)
 ```
 
-## Build Sequence (High Level)
+## Where to Dive Deeper
 
-1. Provision 7 active LXCs with `terraform init && terraform apply`.
-2. From WSL (`ansible/`): run `host_devices.yml → tier10.yml → tier30.yml → tier40.yml → tier60.yml → tier90.yml → tier80.yml`.
-3. Complete manual gaps (NPM Proxy Hosts + cert import, Tailscale route approval + Split DNS, Vaultwarden signup lock, Immich Quick Sync toggle, Uptime Kuma monitors, Windows Task Scheduler backup pull).
-
-Full runbook: [kb/operations/build-from-scratch.md](kb/operations/build-from-scratch.md)
-
-## Knowledge Base Entry Points
-
-- [kb/index.md](kb/index.md) — KB index & status semantics
-- [kb/architecture/overview.md](kb/architecture/overview.md) — Hardware & architecture overview
-- [kb/decisions/ADR-007-lean-8gb-phase1.md](kb/decisions/ADR-007-lean-8gb-phase1.md) — Lean 8 GB scope & deferrals
-- [kb/reference/ip-ctid-matrix.md](kb/reference/ip-ctid-matrix.md) — Canonical IP ↔ CTID ↔ DNS matrix
-- [kb/roadmap/build-sequence.md](kb/roadmap/build-sequence.md) — Chronological build order
-- [kb/operations/backup-and-restore.md](kb/operations/backup-and-restore.md) — Two-track zero-cloud backup & restore drills
-- [kb/operations/secret-rotation.md](kb/operations/secret-rotation.md) — Vault secret rotation
-
-## Secrets Handling
-
-Never commit `.vault_pass`, `terraform.tfvars`, `service-account.txt`, or `*.tfstate*` (all gitignored). Generate secrets with `openssl rand`, encrypt inline with `ansible-vault encrypt_string`, and run `unset SECRET; history -c`.
+- **Architecture & Decisions:** [Overview](kb/architecture/overview.md) · [Lean 8 GB Scope (`ADR-007`)](kb/decisions/ADR-007-lean-8gb-phase1.md) · [IP & CTID Matrix](kb/reference/ip-ctid-matrix.md)
+- **Operational Runbooks:** [Build from Scratch](kb/operations/build-from-scratch.md) · [Backup & Restore Drills](kb/operations/backup-and-restore.md) · [System Updates & Reboots](kb/operations/update-and-reboot.md) · [Secret Rotation](kb/operations/secret-rotation.md)
+- **Full Documentation Index:** [Knowledge Base Index](kb/index.md)
