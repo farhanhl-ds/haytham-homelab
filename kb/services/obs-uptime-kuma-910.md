@@ -33,7 +33,8 @@ Self-hosted uptime monitoring and alerting for all homelab services, DNS resolut
 
 ## 4. Configuration
 
-- **First run:** Open `https://uptime.haytham.internal` and create the admin account (stored in SQLite, not Vault).
+- **First run:** Open `https://uptime.haytham.internal`, choose **SQLite** on `/setup-database`, and create the admin account (stored in SQLite, not Vault).
+- **Container DNS:** Compose sets `dns: [192.168.100.11, 1.1.1.1]` so Uptime Kuma resolves `*.haytham.internal` via Pi-hole while CT `910` itself keeps Terraform's public resolvers for `apt`/Docker bootstrap.
 - **NPM Proxy Host:** `uptime.haytham.internal → 192.168.100.91:3001`, wildcard cert, Force SSL + HTTP/2, **Websockets Support ON** (required by Uptime Kuma's Socket.IO UI).
 - **Recommended monitors to add:**
   - HTTP(s): `https://haytham.internal`, `https://pihole.haytham.internal/admin/`, `https://npm.haytham.internal`, `https://vaultwarden.haytham.internal`, `https://immich.haytham.internal`, `https://pve.haytham.internal` (enable "Ignore TLS/SSL error" for self-signed wildcard cert).

@@ -5,5 +5,9 @@ services:
     restart: unless-stopped
     ports:
       - "{{ uptime_kuma_port }}:3001"
+    dns:
+{% for dns_server in uptime_kuma_dns_servers %}
+      - {{ dns_server }}
+{% endfor %}
     volumes:
       - ./data:/app/data
