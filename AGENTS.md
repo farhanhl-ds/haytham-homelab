@@ -5,7 +5,7 @@ Single-node Proxmox VE homelab on a Lenovo ThinkCentre M910q Tiny (**Intel i5 7t
 ## Canonical Facts
 
 - **Proxmox host:** `haytham` at `192.168.100.2` (`vmbr0`, gateway `192.168.100.1`, subnet `192.168.100.0/24`, storage `local` + `local-lvm`).
-- **Control nodes:** Linux `devbox` (`192.168.100.150`, key `~/.ssh/id_ed25519`) or Windows WSL.
+- **Control node:** Operator Linux workstation/VM (e.g., local Ubuntu `devbox`, key `~/.ssh/id_ed25519`) or Windows WSL running Terraform and Ansible.
 - **Domain:** `haytham.internal` (wildcard `*.haytham.internal → 192.168.100.12` NPM via Pi-hole `.11`, self-signed wildcard TLS).
 - **CTID ↔ IP formula:** `last_octet = CTID / 10` (static `.2–.99`, DHCP `.100–.254`).
 - **Active Phase 1 scope (`ADR-007`, Lean 8 GB):** 7 LXCs + host backups:

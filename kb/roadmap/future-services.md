@@ -44,7 +44,7 @@ retrievable: true
 | 510 | .51 | Ollama | Split LXC from OpenWebUI (requires RAM/hardware upgrade) |
 | 520 | .52 | OpenWebUI | Split LXC from Ollama |
 | 920 | .92 | Portainer | Optional; manages Docker LXCs only |
-| 101+ | .4-.10 | Next VMs | First free IP after HAOS `.3`. Example: VM101 devbox at `.4` |
+| 101+ | .4-.10 | Next VMs | First free IP after HAOS `.3`. Example: VM101 Linux dev VM at `.4` |
 
 ## Research rule before any new app
 

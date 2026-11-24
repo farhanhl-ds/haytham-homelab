@@ -37,7 +37,7 @@ All services run inside lightweight Linux containers (LXCs) — one service per 
 
 ```mermaid
 flowchart LR
-    subgraph Control["Control Node (Linux devbox / WSL)"]
+    subgraph Control["Control Node (Linux Workstation / WSL)"]
         TF["Terraform\n(Provisions LXC shells,\nIPs, CPU/RAM/disk)"]
         ANS["Ansible\n(Device passthrough,\nDocker apps, backup timers)"]
     end

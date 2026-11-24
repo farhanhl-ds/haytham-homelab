@@ -18,7 +18,7 @@ Canonical runbook: `kb/operations/backup-and-restore.md` (zero-cloud, zero-Samba
 
 ## Routine Backup Verification
 
-Run from control node (`devbox` or WSL):
+Run from your control node (Linux workstation or WSL):
 
 ```bash
 # 1. Check timers, trigger on-demand Track 1 backup, inspect snapshots on haytham
