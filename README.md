@@ -54,8 +54,8 @@ flowchart LR
     ANS --> PVE
     NET --> APPS
     APPS --> BKP
-    BKP -->|"Encrypted state (rsync/SSH)"| OFFHOST
-    APPS -->|"Immich photo originals (rsync/SSH)"| OFFHOST
+    BKP -->|"Encrypted state (SSH)"| OFFHOST
+    APPS -->|"Immich photo originals (SSH)"| OFFHOST
 ```
 
 ## Key Design Principles
@@ -81,7 +81,7 @@ haytham-homelab/
 ├── .agents/skills/            # On-demand AI runbook skills (rebuild, backup, updates, etc.)
 ├── terraform/                 # Proxmox LXC provisioning (bpg/proxmox)
 ├── ansible/                   # Host device passthrough, app roles & backup timers
-├── scripts/                   # Off-host SSH backup pull script (zero cloud, zero Samba)
+├── scripts/                   # Off-host SSH backup pull scripts (Linux/WSL + native Windows cmd)
 └── kb/                        # Canonical Knowledge Base (architecture, ADRs, services, runbooks)
 ```
 

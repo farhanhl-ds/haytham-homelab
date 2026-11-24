@@ -113,9 +113,9 @@ Browser (DNS → Pi-hole): `https://haytham.internal`, `https://{pihole,npm,vaul
 - **Vaultwarden (.32):** create master account, then `signups_allowed=false` + re-run `tier30.yml`. Store wildcard cert + `vault_restic_password` as attachments.
 - **Immich (.61):** create admin account → **Administration → Settings → Video Transcoding → Quick Sync** → pair Immich iOS app for photo migration.
 - **Uptime Kuma (.91):** create admin account → add internal HTTPS/DNS/TCP monitors (ignore self-signed TLS per monitor).
-- **Backup verification:** run `systemctl start homelab-backup.service` on `haytham`, run `scripts/pull-homelab-backups.sh` from WSL, and schedule the Windows Task Scheduler pull (`operations/backup-and-restore.md`).
+- **Backup verification:** run `systemctl start homelab-backup.service` on `haytham`, run `scripts/pull-homelab-backups.bat` (Windows `cmd`) or `scripts/pull-homelab-backups.sh` (Linux/WSL), and optionally schedule Windows Task Scheduler (`operations/backup-and-restore.md`).
 - **Workstation:** restore Normal DNS order (§3).
 
 ## 8. Destroy = data loss
 
-All container disks (including up to 500 GB of Immich photos in CT `610`) live on `local-lvm` and are wiped by `terraform destroy`. Before any destroy on a loaded host, confirm Track 1 (`restic check`) and Track 2 (`pull-homelab-backups.sh`) are up to date on your PC or external drive (`operations/backup-and-restore.md`).
+All container disks (including up to 500 GB of Immich photos in CT `610`) live on `local-lvm` and are wiped by `terraform destroy`. Before any destroy on a loaded host, confirm Track 1 (`restic check`) and Track 2 (`pull-homelab-backups.{sh,bat}`) are up to date on your PC or external drive (`operations/backup-and-restore.md`).

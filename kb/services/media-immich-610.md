@@ -64,7 +64,7 @@ Browser: `https://immich.haytham.internal` → create admin account → enable Q
 > **Never run `terraform destroy` without verifying your off-host backup first.** CT `610` holds up to 500 GB of primary photos on a single SSD.
 
 - **Track 1 (daily, automated):** Proxmox dumps `immich_postgres` via `pg_dumpall` into the encrypted `restic` repo (`/var/backups/homelab/restic`), pulled to your PC.
-- **Track 2 (incremental SSH pull):** `scripts/pull-homelab-backups.sh` mirrors `/opt/immich/library/{library,upload,profile}/` directly to your Windows PC or external USB drive (excluding regeneratable `thumbs/` and `encoded-video/`). See `../operations/backup-and-restore.md`.
+- **Track 2 (incremental SSH pull):** `scripts/pull-homelab-backups.bat` (native Windows `cmd` via inbox `ssh.exe` + `tar.exe`) or `scripts/pull-homelab-backups.sh` (Linux/WSL `rsync`) mirrors `/opt/immich/library/{library,upload,profile}/` directly to your Windows PC or external USB drive (excluding regeneratable `thumbs/` and `encoded-video/`). See `../operations/backup-and-restore.md`.
 
 ## 7. Known gotchas
 
@@ -78,4 +78,4 @@ Browser: `https://immich.haytham.internal` → create admin account → enable Q
 A: Dynamic RAM sharing on 8 GB RAM (~1.3–1.8 GB idle vs. 4 GB static KVM lock) and straightforward non-exclusive `/dev/dri` Quick Sync passthrough. See `../decisions/ADR-007-lean-8gb-phase1.md`.
 
 **Q: Do I need Samba to move photos in or out?**
-A: No. Import via the Immich iOS app or `immich-go`; back up originals via `scripts/pull-homelab-backups.sh` (`rsync` over SSH).
+A: No. Import via the Immich iOS app or `immich-go`; back up originals over SSH via `scripts/pull-homelab-backups.bat` (Windows `cmd`) or `scripts/pull-homelab-backups.sh` (Linux/WSL).

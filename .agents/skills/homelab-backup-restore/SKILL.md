@@ -14,7 +14,7 @@ Canonical runbook: `kb/operations/backup-and-restore.md` (zero-cloud, zero-Samba
 
 - **Track 1 (Critical State — Daily 03:00):** Proxmox systemd `homelab-backup.timer` dumps Vaultwarden SQLite (hot `.backup`), Immich `pg_dumpall`, NPM, Pi-hole, Homepage, Uptime Kuma SQLite, and `/etc/pve/lxc/*.conf` into encrypted `restic` repo `/var/backups/homelab/restic` (retain 7 daily / 4 weekly).
 - **Track 1b (LXC Snapshots — Sun 03:30):** `homelab-vzdump.timer` snapshots lightweight CTs (`110, 120, 130, 320, 440, 910`) to Proxmox `local` storage (keep last 2).
-- **Track 2 (Immich Originals — On-Demand / Scheduled Pull):** Incremental `rsync` over SSH directly from CT `610` (`/opt/immich/library/{library,upload,profile}/`) via `scripts/pull-homelab-backups.sh` (excludes `thumbs/` & `encoded-video/`, intentionally omits `--delete`).
+- **Track 2 (Immich Originals — On-Demand / Scheduled Pull):** Incremental SSH pull directly from CT `610` (`/opt/immich/library/{library,upload,profile}/`) via `scripts/pull-homelab-backups.sh` (`rsync` on Linux/WSL) or `scripts/pull-homelab-backups.bat` (inbox Windows `ssh.exe` + `tar.exe`, Device Guard safe) — excludes `thumbs/` & `encoded-video/`, intentionally omits deletes.
 
 ## Routine Backup Verification
 
@@ -29,10 +29,18 @@ ssh -i ~/.ssh/id_ed25519 root@192.168.100.2 \
    restic -r /var/backups/homelab/restic --password-file /etc/homelab-backup/restic.pass snapshots && \
    restic -r /var/backups/homelab/restic --password-file /etc/homelab-backup/restic.pass check"
 
-# 2. Pull off-host backups
+# 2. Pull off-host backups (Linux / WSL)
 /home/farhan/haytham-homelab/scripts/pull-homelab-backups.sh --state-only
 # Optional Track 2 photos pull (set PHOTOS_BACKUP_DIR if using an external/D: drive):
 # PHOTOS_BACKUP_DIR="/path/to/immich-originals" /home/farhan/haytham-homelab/scripts/pull-homelab-backups.sh --photos-only
+```
+
+Or from native Windows `cmd` (no WSL, Device Guard safe — uses inbox `ssh.exe` + `tar.exe`):
+
+```bat
+set "STATE_BACKUP_DIR=C:\Users\<you>\Backups\haytham\state"
+set "PHOTOS_BACKUP_DIR=D:\Backups\haytham\immich-originals"
+scripts\pull-homelab-backups.bat
 ```
 
 To verify the off-host `restic` mirror without exposing the password in shell history, ask the user to run `restic -r "<STATE_BACKUP_DIR>/restic" check` interactively.

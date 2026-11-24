@@ -46,7 +46,7 @@ retrievable: true
 ## Backups (Tier 80 — Host + Workstation Pull)
 
 - Host timers (`tier80.yml` → `roles/backup`): daily encrypted `restic` repo (`/var/backups/homelab/restic`) + weekly lightweight LXC `vzdump`.
-- Off-host pull script (`scripts/pull-homelab-backups.sh` on WSL): pulls Track 1 `restic` repo from `haytham` (`.2`) and Track 2 Immich originals from CT `610` (`.61`) over SSH (zero cloud, zero Samba).
+- Off-host pull scripts (`scripts/pull-homelab-backups.bat` on native Windows `cmd` using inbox `ssh.exe` + `tar.exe`, and `scripts/pull-homelab-backups.sh` on Linux/WSL using `rsync`): pull Track 1 `restic` repo from `haytham` (`.2`) and Track 2 Immich originals from CT `610` (`.61`) over SSH (zero cloud, zero Samba).
 
 ## SSL & DNS
 

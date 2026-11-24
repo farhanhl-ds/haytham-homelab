@@ -13,7 +13,7 @@ Single-node Proxmox VE homelab on a Lenovo ThinkCentre M910q Tiny (**Intel i5 7t
   - Tier 30: `320` Vaultwarden (`.32`)
   - Tier 40: `440` Homepage (`.44`, root `haytham.internal`)
   - Tier 60: `610` Immich (`.61`, 500 GB thin-provisioned, Intel Quick Sync `/dev/dri`)
-  - Tier 80: Proxmox host `restic` (daily 03:00) + `vzdump` (Sun 03:30) + off-host SSH pull (`scripts/pull-homelab-backups.sh`)
+  - Tier 80: Proxmox host `restic` (daily 03:00) + `vzdump` (Sun 03:30) + off-host SSH pull (`scripts/pull-homelab-backups.{sh,bat}`)
   - Tier 90: `910` Uptime Kuma (`.91`, 8 GB disk)
 - **Deferred (preserved in-repo, `enabled = false`):** Tier 20 (`210` Postgres, `220` Redis, `230` pgAdmin), `420` Karakeep, `VM 100` HAOS (stopped).
 

@@ -42,7 +42,7 @@ retrievable: false
 26. Q: HAOS Terraform or manual? → Manual `qm` (ADR-005); requires ovmf/q35/virtio-scsi-pci/efidisk0.
 27. Q: HAOS boot hang signature? → "Booting from Hard Disk", 50% CPU, 0 IO.
 28. Q: Reboot order for update-all (Phase 1)? → 320 → 610 → 440/910 → 110/120/130 (`operations/update-and-reboot.md`).
-29. Q: How are Immich photos and Vaultwarden backed up without cloud or Samba? → Track 1 daily encrypted `restic` on Proxmox pulled via WSL SSH; Track 2 incremental `rsync` over SSH directly from CT `610` (`library/upload/profile`) to PC/USB (`operations/backup-and-restore.md`).
+29. Q: How are Immich photos and Vaultwarden backed up without cloud or Samba? → Track 1 daily encrypted `restic` on Proxmox pulled over SSH; Track 2 incremental SSH pull directly from CT `610` (`library/upload/profile`) to PC/USB via `scripts/pull-homelab-backups.bat` (native Windows `cmd` inbox `ssh.exe` + `tar.exe`) or `scripts/pull-homelab-backups.sh` (Linux/WSL `rsync`) (`operations/backup-and-restore.md`).
 30. Q: What is SSO status? → Reserved (ADR-004); Authelia default-if-needed.
 31. Q: How to read one vault value? → `ansible localhost -m debug -a "var=<name>" -e @group_vars/<tier>.yml`.
 32. Q: How to share project zip safely? → exclude `.vault_pass` (`zip -r … -x`).

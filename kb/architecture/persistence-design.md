@@ -19,7 +19,7 @@ Host `haytham` has a **single 1 TB SSD** (no RAID / ZFS redundancy — see `../d
 To achieve true **2-drive redundancy with zero cloud exposure and zero Samba shares**, Phase 1 ships with automated **Tier 80 local-network backups** (`../operations/backup-and-restore.md`):
 
 - **Track 1 (Critical small state — daily):** Proxmox `systemd` timer dumps Vaultwarden SQLite (online `.backup`), Immich Postgres (`pg_dumpall`), NPM SQLite, Pi-hole config, Homepage config, Uptime Kuma SQLite, and `/etc/pve/lxc/*.conf` into an encrypted local `restic` repository (`/var/backups/homelab/restic`, 7 daily / 4 weekly). Weekly `vzdump` snapshots cover lightweight LXCs (`110, 120, 130, 320, 440, 910`).
-- **Track 2 (Immich 500 GB original photos/videos — incremental SSH pull):** `scripts/pull-homelab-backups.sh` pulls both the Track 1 encrypted `restic` repo and Immich originals (`/opt/immich/library/{library,upload,profile}/`, excluding regeneratable `thumbs/` and `encoded-video/`) directly over SSH to the Windows workstation or an external USB drive.
+- **Track 2 (Immich 500 GB original photos/videos — incremental SSH pull):** `scripts/pull-homelab-backups.bat` (native Windows `cmd` using inbox `ssh.exe` + `tar.exe`) and `scripts/pull-homelab-backups.sh` (Linux/WSL `rsync`) pull both the Track 1 encrypted `restic` repo and Immich originals (`/opt/immich/library/{library,upload,profile}/`, excluding regeneratable `thumbs/` and `encoded-video/`) directly over SSH to the Windows workstation or an external USB drive.
 
 ## 2. Per-service blast radius
 
@@ -36,7 +36,7 @@ To achieve true **2-drive redundancy with zero cloud exposure and zero Samba sha
 
 ## 3. Required practices from day one
 
-- **Never run `terraform destroy` on a loaded host** (especially after migrating iPhone photos to CT `610`) without confirming both Track 1 (`restic check`) and Track 2 (`pull-homelab-backups.sh`) completed cleanly on your PC/USB drive.
+- **Never run `terraform destroy` on a loaded host** (especially after migrating iPhone photos to CT `610`) without confirming both Track 1 (`restic check`) and Track 2 (`pull-homelab-backups.{sh,bat}`) completed cleanly on your PC/USB drive.
 - **Snapshot before risky updates:** `pct snapshot <ctid> pre-update-YYYYMMDD` (see `../operations/update-and-reboot.md`). Snapshots are rollback aids, not off-host backups.
 - **Run a Vaultwarden restore drill** immediately after Phase 1 comes up (`../operations/backup-and-restore.md §6`).
 - **Offline emergency keys:** Keep `vault_restic_password` and Ansible `.vault_pass` on an offline/printed sheet or encrypted USB outside the `restic` repo.
