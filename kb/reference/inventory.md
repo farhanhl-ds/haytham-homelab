@@ -57,6 +57,40 @@ retrievable: true
 
 ## SSH Keys & Certificates Matrix
 
+```mermaid
+flowchart LR
+  subgraph PC["Windows PC (Off-Host Backup Client)"]
+    PC_SSH["SSH Key Pair\n%USERPROFILE%\\.ssh\\id_ed25519(.pub)"]
+    PC_TRUST["Windows Trusted Root CA\n(haytham-internal.crt only)"]
+  end
+
+  subgraph CTRL["Linux Control Node (devbox / WSL)"]
+    CTRL_SSH["SSH Key Pair\n~/.ssh/id_ed25519(.pub)\n(ssh-agent + terraform.tfvars)"]
+    CTRL_CERT["Wildcard Cert Master\n~/homelab-cert/\nhaytham-internal.{key,crt,cnf}"]
+  end
+
+  subgraph LAB["Homelab (haytham - 192.168.100.0/24)"]
+    PVE["Proxmox Host (.2)\nauthorized_keys: control node + PC"]
+    NPM["CT 120 NPM (.12)\nauthorized_keys: control node\nTLS: haytham-internal.{key,crt}"]
+    IMMICH["CT 610 Immich (.61)\nauthorized_keys: control node + PC"]
+    OTHER["Other LXCs (.11 .13 .32 .44 .91)\nPi-hole, Tailscale, Vaultwarden,\nHomepage, Uptime Kuma\nauthorized_keys: control node"]
+  end
+
+  %% SSH flow (solid)
+  CTRL_SSH -->|"SSH: Terraform + Ansible"| PVE
+  CTRL_SSH -->|"SSH: Terraform inject + Ansible"| NPM
+  CTRL_SSH -->|"SSH: Terraform inject + Ansible"| IMMICH
+  CTRL_SSH -->|"SSH: Terraform inject + Ansible"| OTHER
+
+  PC_SSH -->|"SSH: Track 1 restic pull (.bat)"| PVE
+  PC_SSH -->|"SSH: Track 2 photos pull (.bat)"| IMMICH
+
+  %% TLS cert flow (dashed)
+  CTRL_CERT -.->|"Import .key + .crt once"| NPM
+  CTRL_CERT -.->|"Install .crt (public only)"| PC_TRUST
+  PC_TRUST -.->|"HTTPS *.haytham.internal"| NPM
+```
+
 | Location | SSH Keys (`authorized_keys` / Key Pair) | TLS Certificates |
 |---|---|---|
 | **Windows PC** (off-host backup client) | Key pair `%USERPROFILE%\.ssh\id_ed25519{,.pub}` (private key stays local; `.pub` authorized on `.2` & `.61` for `pull-homelab-backups.bat`) | `haytham-internal.crt` (public cert only) installed in Windows **Trusted Root CA** (`certmgr.msc`); install on mobile/other client devices too |
