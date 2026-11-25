@@ -34,7 +34,7 @@ retrievable: true
 | Tier 30 Identity (Vaultwarden 320) | `services/identity-vaultwarden-320.md` |
 | Tier 40 App (Homepage 440; Karakeep 420 deferred) | `services/app-homepage-440.md` |
 | Tier 60 Media (Immich 610) | `services/media-immich-610.md` |
-| Tier 80 Backup (Host `restic` + WSL SSH pull) | `operations/backup-and-restore.md` |
+| Tier 80 Backup (Host `restic` + off-host SSH pull) | `operations/backup-and-restore.md` |
 | Tier 90 Observability (Uptime Kuma 910) | `services/obs-uptime-kuma-910.md` |
 | Deferred (Tier 20 Data 210/220/230, Karakeep 420, VM 100 HAOS) | `services/data-postgres-210.md`, `services/app-karakeep-420.md`, `services/vm-haos-100.md` |
 | Build order | `roadmap/build-sequence.md` |
