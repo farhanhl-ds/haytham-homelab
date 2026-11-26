@@ -1,16 +1,16 @@
 ---
 id: svc-postgres-210
-title: Postgres — Tier 20 Data (CTID 210)
+title: Postgres — Tier 20 Data (CTID 122)
 tier: "20"
-ctid: "210"
-ip: 192.168.100.21
+ctid: "122"
+ip: 192.168.100.22
 status: reserved
 last_verified: unreleased
 tags: [postgres, database, tier20, data]
 retrievable: true
 ---
 
-# Postgres — Tier 20 Data (CTID 210)
+# Postgres — Tier 20 Data (CTID 122)
 
 > **Status: Deferred (`enabled = false` in `terraform/locals.tf`)** until an active app requires shared Postgres or after the 16 GB RAM upgrade — see `../decisions/ADR-007-lean-8gb-phase1.md`.
 
@@ -22,7 +22,7 @@ Shared relational store. Principle: **1 database + 1 owner role per app**, liste
 
 | Field | Value |
 |---|---|
-| CTID / IP | 210 / `192.168.100.21` |
+| CTID / IP | 210 / `192.168.100.22` |
 | Resources | 1 core / 512 MB / 16 GB |
 | Base | Ubuntu 24.04 native apt Postgres |
 | Clients | `psql` via `postgresql-client` (WSL tooling) |
@@ -41,10 +41,10 @@ Shared relational store. Principle: **1 database + 1 owner role per app**, liste
 ## 5. Verification
 
 ```bash
-psql -h 192.168.100.21 -U postgres -c "SELECT 1;"
+psql -h 192.168.100.22 -U postgres -c "SELECT 1;"
 # Expect: 1 row
 
-psql -h 192.168.100.21 -U postgres -c "SHOW server_encoding;"
+psql -h 192.168.100.22 -U postgres -c "SHOW server_encoding;"
 ```
 
 pgAdmin tree (`https://pgadmin.haytham.internal`) lists expected DBs with UTF8.

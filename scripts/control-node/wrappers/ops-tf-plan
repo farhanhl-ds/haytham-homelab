@@ -1,0 +1,41 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+# Audited Read-Only Wrapper — Terraform Validate & Plan
+# Callable by: homelab-agent (via NOPASSWD sudo as homelab-ops) or homelab-ops.
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# shellcheck source=_ops-infisical-lib.sh
+source "${SCRIPT_DIR}/_ops-infisical-lib.sh"
+
+if [[ "$#" -ne 0 ]]; then
+  echo "[ERROR] ops-tf-plan accepts NO arguments." >&2
+  exit 2
+fi
+
+require_ops_user
+trap cleanup_ephemeral_resources EXIT INT TERM
+audit_log "ops-tf-plan" "start"
+
+TF_DIR="${OPS_REPO_DIR}/terraform"
+TF_VARS="${OPS_STATE_DIR}/terraform.tfvars"
+TF_STATE="${OPS_STATE_DIR}/terraform.tfstate"
+TF_PLAN_OUT="${OPS_STATE_DIR}/plans/latest.tfplan"
+
+if [[ ! -f "${TF_VARS}" ]]; then
+  echo "[ERROR] Missing non-secret ${TF_VARS} (pve_endpoint, ssh_public_key_path)." >&2
+  exit 1
+fi
+
+infisical_export_terraform_env
+start_ephemeral_ssh_agent
+
+/usr/local/bin/terraform -chdir="${TF_DIR}" validate
+/usr/local/bin/terraform -chdir="${TF_DIR}" plan \
+  -input=false \
+  -var-file="${TF_VARS}" \
+  -state="${TF_STATE}" \
+  -out="${TF_PLAN_OUT}" \
+  -no-color
+
+audit_log "ops-tf-plan" "ok"

@@ -1,7 +1,7 @@
 ---
-# Host-managed Tier 80 automated backups (Proxmox `haytham`).
-# Track 1: Daily encrypted restic repo for critical small app state + DB dumps.
-# Track 2: Immich 500 GB originals synced off-host directly via scripts/pull-homelab-backups.sh.
+# Host-managed automated backups (Proxmox `haytham` @ 192.168.100.2).
+# Track 1: Daily encrypted restic repo for critical small app state + DB dumps (incl. Zone 1 CT 110 Infisical).
+# Track 2: Immich 500 GB originals (CT 121 @ .21) pulled off-host directly via scripts/pull-homelab-backups.{bat,sh}.
 # kb/operations/backup-and-restore.md
 backup_base_dir: /var/backups/homelab
 backup_restic_repo: "{{ backup_base_dir }}/restic"
@@ -16,9 +16,10 @@ backup_vzdump_schedule_oncalendar: "Sun *-*-* 03:30:00"
 backup_vzdump_storage: local
 backup_vzdump_keep_last: 2
 backup_vzdump_ctids:
-  - 110
-  - 120
-  - 130
-  - 320
-  - 440
-  - 910
+  - 110 # Zone 1 Immutable Infisical
+  - 120 # Zone 2 Vaultwarden
+  - 130 # Zone 3 Pi-hole
+  - 131 # Zone 3 NPM
+  - 132 # Zone 3 Tailscale
+  - 140 # Zone 4 Homepage
+  - 141 # Zone 4 Uptime Kuma

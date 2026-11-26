@@ -2,7 +2,7 @@
 id: adr-005-haos-manual
 title: ADR-005 — HAOS Managed Manually via qm, Not Terraform
 tier: "vm"
-ctid: "100"
+ctid: "103"
 ip: 192.168.100.3
 status: planned
 last_verified: unreleased
@@ -18,7 +18,7 @@ HAOS is a full OS image (`qcow2`), not `apt`/`compose`. It requires a VM (cleane
 
 ## Decision
 
-Manage VM 100 fully manually (`qm create` / `importdisk` / GUI disk attach / boot order). Document canonically in `services/vm-haos-100.md`; Terraform ignores it. IP is a router reservation (`.3`, MAC-pinned), not Terraform state.
+Manage VM 103 fully manually (`qm create` / `importdisk` / GUI disk attach / boot order). Document canonically in `services/vm-haos-103.md`; Terraform ignores it. IP is a router reservation (`.3`, MAC-pinned), not Terraform state.
 
 ## Alternatives considered
 

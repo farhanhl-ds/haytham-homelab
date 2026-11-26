@@ -1,7 +1,8 @@
 ---
-# Immich defaults — Tier 60 Media (CTID 610, 500 GB thin-provisioned on local-lvm).
+# Immich defaults — Zone 2 Protected Data (CT 121 @ 192.168.100.21, 500 GB thin-provisioned).
 # Self-contained 4-container bundle (server + ML + Valkey + Postgres/VectorChord).
-# Do NOT wire to shared Tier 20 Postgres/Redis. kb/services/media-immich-610.md
+# Secret `vault_immich_db_password` injected at runtime from Zone 1 Infisical (/zone2).
+# kb/services/zone2-immich-121.md
 immich_data_dir: /opt/immich
 immich_upload_location: "{{ immich_data_dir }}/library"
 immich_db_data_location: "{{ immich_data_dir }}/postgres"

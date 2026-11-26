@@ -1,12 +1,12 @@
 ---
 id: ops-backup-and-restore
 title: Runbook — Automated Local-Network Backup and Restore
-tier: "80"
+tier: "x"
 ctid: "n/a"
 ip: 192.168.100.2
 status: planned
 last_verified: unreleased
-tags: [operations, backup, restore, restic, rsync, dr]
+tags: [operations, backup, restore, restic, rsync, dr, infisical]
 retrievable: true
 ---
 
@@ -14,37 +14,30 @@ retrievable: true
 
 ## 1. Purpose
 
-Protect critical homelab state (especially Vaultwarden credentials and Immich photos/metadata) across **two physical storages** (Proxmox 1 TB SSD + Windows workstation or external USB drive) with **zero cloud exposure and zero Samba shares**.
+Protect critical homelab state — **Zone 1 Infisical (`CT 110`)**, **Zone 2 Vaultwarden (`CT 120`)**, and **Zone 2 Immich (`CT 121`)** — across **two physical storages** (Proxmox 1 TB SSD + Windows PC or external USB drive) with **zero cloud exposure, zero Samba shares, and complete independence from the disposable `devbox` control node**.
 
 ## 2. Architecture (Two-Track Model)
 
 | Track | Scope | Mechanism | Schedule | Destination |
 |---|---|---|---|---|
-| **Track 1 — Critical State** | Vaultwarden SQLite (hot `.backup`) + keys/attachments, Immich `pg_dumpall`, NPM data, Pi-hole config, Homepage config, Uptime Kuma SQLite, `/etc/pve/lxc/*.conf` | Proxmox `systemd` timer (`roles/backup`) → encrypted `restic` repo (`/var/backups/homelab/restic`) | Daily `03:00` (retain 7 daily / 4 weekly) | Local SSD, then pulled over SSH via `pull-homelab-backups.bat` (Windows `cmd`) or `pull-homelab-backups.sh` (Linux/WSL) |
-| **Track 1b — LXC Snapshots** | Lightweight LXCs (`110, 120, 130, 320, 440, 910`) | Proxmox `vzdump` (`zstd`, `mode=snapshot`) | Weekly Sun `03:30` (keep last 2) | Proxmox `local` storage |
-| **Track 2 — Immich Originals** | `/opt/immich/library/{library,upload,profile}/` (excludes regeneratable `thumbs/` & `encoded-video/`) | Direct incremental SSH pull (`scripts/pull-homelab-backups.bat` on Windows `cmd`, `scripts/pull-homelab-backups.sh` on Linux/WSL) | On-logon / daily Task Scheduler or on-demand | Windows PC internal drive or external USB drive |
+| **Track 1 — Critical State** | **CT `110` Infisical** (`pg_dumpall` + `/opt/infisical/.env`), **CT `120` Vaultwarden** (hot SQLite + keys/attachments), **CT `121` Immich** (`pg_dumpall`), CT `130` Pi-hole, CT `131` NPM, CT `140` Homepage, CT `141` Uptime Kuma SQLite, `/etc/pve/lxc/*.conf` | Proxmox `systemd` timer (`ansible/host_backups.yml`) → encrypted `restic` repo (`/var/backups/homelab/restic`) | Daily `03:00` (retain 7 daily / 4 weekly) | Local SSD, then pulled from Windows using Windows-only SSH key via `scripts/pull-homelab-backups.bat` |
+| **Track 1b — LXC Snapshots** | Lightweight LXCs (`110, 120, 130, 131, 132, 140, 141`) | Proxmox `vzdump` (`zstd`, `mode=snapshot`) | Weekly Sun `03:30` (keep last 2) | Proxmox `local` storage |
+| **Track 2 — Immich Originals** | `CT 121` (`192.168.100.21`) `/opt/immich/library/{library,upload,profile}/` (excludes regeneratable `thumbs/` & `encoded-video/`) | Direct incremental SSH pull (`scripts/pull-homelab-backups.bat` on Windows `cmd`, `scripts/pull-homelab-backups.sh` on Linux/WSL) | On-logon / daily Task Scheduler or on-demand | Windows PC internal drive or external USB drive (no deletes) |
 
-> Track 2 intentionally does **not** duplicate 500 GB of photos onto the same 1 TB Proxmox SSD. Pulling directly over SSH gives true 2-drive redundancy without halving SSD capacity.
+> Track 2 intentionally does **not** duplicate 500 GB of photos onto the same 1 TB Proxmox SSD. Pulling directly from Windows with a **Windows-only SSH key** guarantees a compromised `devbox` cannot alter or delete off-host backups.
 
 ## 3. Prerequisites
 
-- `vault_restic_password` encrypted in `ansible/group_vars/proxmox.yml` (also store a copy of this password in Vaultwarden **and** an offline/printed emergency sheet — you cannot decrypt `restic` without it).
-- `ansible-playbook tier80.yml` applied cleanly to `haytham` (`192.168.100.2`).
-- Key-based SSH to `root@192.168.100.2` and `root@192.168.100.61` from either:
-  - **Native Windows `cmd` (no WSL, zero third-party installs):** Built-in Windows `ssh.exe` + `tar.exe` (Device Guard / Smart App Control safe) + `scripts/pull-homelab-backups.bat`
-  - **Linux / WSL Ubuntu 24.04:** `rsync`, `restic`, and `scripts/pull-homelab-backups.sh`
+- `vault_restic_password` populated in Zone 1 Infisical (`/proxmox`) and stored offline (Windows KeePassXC + printed sheet — you cannot decrypt `restic` without it).
+- `ops-ansible-apply host_backups.yml` applied cleanly to `haytham` (`192.168.100.2`).
+- Windows-only Break-Glass / Backup-Pull SSH public key (`%USERPROFILE%\.ssh\id_ed25519.pub`) authorized in `/root/.ssh/authorized_keys` on `haytham` (`192.168.100.2`) and `CT 121` (`192.168.100.21`, baked declaratively via `breakglass_ssh_public_key_path` in Terraform).
 
 ## 4. Off-Host Pull Setup
 
-### Option A — Native Windows `cmd` (No WSL, Zero Third-Party Installs)
-
-Uses only Microsoft-signed inbox Windows binaries (`cmd.exe`, `ssh.exe`, `tar.exe`), so it works cleanly under Windows Smart App Control / Device Guard.
-
-1. Ensure your Windows SSH public key (`%USERPROFILE%\.ssh\id_ed25519.pub`) is authorized in `/root/.ssh/authorized_keys` on CT `610` (`192.168.100.61`, for Track 2) and Proxmox (`192.168.100.2`, for Track 1).
-2. Run `scripts\pull-homelab-backups.bat` in `cmd`:
+### Option A — Native Windows `cmd` (Recommended — Zero WSL, Device Guard Safe)
 
 ```bat
-REM Track 2 only (Immich original photos -> Windows D: or external USB drive, incremental)
+REM Track 2 only (Immich original photos from CT 121 @ .21 -> Windows D: or external USB)
 set "PHOTOS_BACKUP_DIR=D:\Backups\haytham\immich-originals"
 scripts\pull-homelab-backups.bat --photos-only
 
@@ -56,104 +49,82 @@ REM Both Track 1 + Track 2 in one run
 scripts\pull-homelab-backups.bat
 ```
 
-To automate via **Windows Task Scheduler** without WSL:
-1. Create a task triggered **At log on** (or daily).
-2. Action: Start a program → `cmd.exe`
-3. Arguments (example):
-   `/c "set STATE_BACKUP_DIR=C:\Users\<you>\Backups\haytham\state&& set PHOTOS_BACKUP_DIR=D:\Backups\haytham\immich-originals&& C:\path\to\haytham-homelab\scripts\pull-homelab-backups.bat"`
+Automate via **Windows Task Scheduler**: Trigger *At log on* (or daily), Program `cmd.exe`, Arguments:
+`/c "set STATE_BACKUP_DIR=C:\Users\<you>\Backups\haytham\state&& set PHOTOS_BACKUP_DIR=D:\Backups\haytham\immich-originals&& C:\path\to\haytham-homelab\scripts\pull-homelab-backups.bat"`
 
 ### Option B — Linux / WSL
 
-Test manually from Linux or WSL first:
-
 ```bash
-chmod +x scripts/pull-homelab-backups.sh
-
-# Track 1 only (tiny encrypted restic repo -> Windows internal drive)
 STATE_BACKUP_DIR="/mnt/c/Users/<you>/Backups/haytham/state" \
-  ./scripts/pull-homelab-backups.sh --state-only
-
-# Track 2 only (Immich original photos -> Windows D: or external USB drive)
 PHOTOS_BACKUP_DIR="/mnt/d/Backups/haytham/immich-originals" \
-  ./scripts/pull-homelab-backups.sh --photos-only
+  ./scripts/pull-homelab-backups.sh
 ```
-
-Automate via **Windows Task Scheduler** (WSL):
-1. Create a task triggered **At log on** (and optionally daily at a time your PC is usually awake).
-2. Action: Start a program → `wsl.exe`
-3. Arguments (example):
-   `-e bash -lc 'STATE_BACKUP_DIR="/mnt/c/Users/<you>/Backups/haytham/state" PHOTOS_BACKUP_DIR="/mnt/d/Backups/haytham/immich-originals" /home/<wsl-user>/haytham-homelab/scripts/pull-homelab-backups.sh'`
 
 ## 5. Verification
 
-On Proxmox host `haytham`:
-
-```bash
-systemctl list-timers 'homelab-*'
-systemctl start homelab-backup.service
-journalctl -u homelab-backup.service -n 50 --no-pager
-
-restic -r /var/backups/homelab/restic --password-file /etc/homelab-backup/restic.pass snapshots
-```
-
-From Linux / WSL (verify mirrored off-host repo integrity):
-
-```bash
-restic -r "/mnt/c/Users/<you>/Backups/haytham/state/restic" check
-```
-
-From Windows `cmd` (verify Track 2 incremental idempotency):
-
-```bat
-REM Re-running immediately after a sync should report: [Track 2] 0 new/changed files
-scripts\pull-homelab-backups.bat --photos-only
-```
+- From `devbox` (`homelab-agent` read-only check): `sudo -u homelab-ops /usr/local/libexec/haytham-ops/ops-health-check`
+- From Windows Break-Glass SSH on `haytham` (`192.168.100.2`):
+  ```bash
+  systemctl start homelab-backup.service
+  journalctl -u homelab-backup.service -n 50 --no-pager
+  restic -r /var/backups/homelab/restic --password-file /etc/homelab-backup/restic.pass snapshots
+  restic -r /var/backups/homelab/restic --password-file /etc/homelab-backup/restic.pass check
+  ```
+- From Windows `cmd` (idempotency check — should report `0 new/changed files`):
+  ```bat
+  scripts\pull-homelab-backups.bat --photos-only
+  ```
 
 ## 6. Restore Drills
 
-### Vaultwarden (P0 — test after initial build)
+### Zone 1 Infisical (`CT 110` — Catastrophic SSD Loss Recovery)
 
 ```bash
-# Restore latest Track 1 snapshot to a temp directory
+# 1. Recreate CT 110 via scripts/zone1/bootstrap-infisical.sh /root/windows_breakglass.pub
+# 2. Extract Track 1 snapshot to /tmp/inf-restore on haytham:
+restic -r /var/backups/homelab/restic --password-file /etc/homelab-backup/restic.pass \
+  restore latest --target /tmp/inf-restore --include /var/backups/homelab/staging/infisical
+
+# 3. Stop backend, restore original .env (ENCRYPTION_KEY + AUTH_SECRET) & Postgres dump:
+pct exec 110 -- docker compose -f /opt/infisical/docker-compose.yml stop backend
+pct push 110 /tmp/inf-restore/var/backups/homelab/staging/infisical/infisical-compose.tar.gz /tmp/infisical-compose.tar.gz
+pct exec 110 -- tar -xzf /tmp/infisical-compose.tar.gz -C /opt/infisical
+pct exec 110 -- rm -f /tmp/infisical-compose.tar.gz
+gunzip -c /tmp/inf-restore/var/backups/homelab/staging/infisical/infisical-postgres.sql.gz \
+  | pct exec 110 -- docker exec -i infisical_postgres psql -U infisical -d postgres
+pct exec 110 -- docker compose -f /opt/infisical/docker-compose.yml up -d
+rm -rf /tmp/inf-restore
+```
+
+### Zone 2 Vaultwarden (`CT 120` — P0 Drill)
+
+```bash
 restic -r /var/backups/homelab/restic --password-file /etc/homelab-backup/restic.pass \
   restore latest --target /tmp/vw-restore --include /var/backups/homelab/staging/vaultwarden
 
-# Stop Vaultwarden, replace db.sqlite3 + vw-data files, start Vaultwarden
-pct exec 320 -- docker compose -f /opt/vaultwarden/docker-compose.yml down
-pct push 320 /tmp/vw-restore/var/backups/homelab/staging/vaultwarden/db.sqlite3 /opt/vaultwarden/vw-data/db.sqlite3
-pct exec 320 -- docker compose -f /opt/vaultwarden/docker-compose.yml up -d
+pct exec 120 -- docker compose -f /opt/vaultwarden/docker-compose.yml down
+pct push 120 /tmp/vw-restore/var/backups/homelab/staging/vaultwarden/db.sqlite3 /opt/vaultwarden/vw-data/db.sqlite3
+pct exec 120 -- docker compose -f /opt/vaultwarden/docker-compose.yml up -d
 rm -rf /tmp/vw-restore
 ```
 
-### Immich (Full Recovery)
+### Zone 2 Immich (`CT 121` — Full Recovery)
 
-1. Provision fresh CT `610` via `terraform apply` + `host_devices.yml` + `tier60.yml`.
-2. Push original photos back from your PC to CT `610`:
-   ```bash
-   # From Linux / WSL
-   rsync -avh --progress "$PHOTOS_BACKUP_DIR/" root@192.168.100.61:/opt/immich/library/
-   ```
+1. From Windows Break-Glass SSH on `haytham`: `./harden-pve-rbac.sh --unlock-dr 121`.
+2. From `homelab-ops` on `devbox`: `ops-tf-apply` → `ops-ansible-apply host_devices.yml` → `ops-ansible-apply zone2_protected.yml`.
+3. Immediately re-lock on `haytham`: `./harden-pve-rbac.sh --lock`.
+4. Push original photos back from Windows to `CT 121` (`192.168.100.21`):
    ```bat
-   REM Or from native Windows cmd (inbox tar.exe + ssh.exe)
-   tar -C "%PHOTOS_BACKUP_DIR%" -cf - library upload profile | ssh -i "%USERPROFILE%\.ssh\id_ed25519" root@192.168.100.61 "tar -xf - -C /opt/immich/library"
+   tar -C "%PHOTOS_BACKUP_DIR%" -cf - library upload profile | ssh -i "%USERPROFILE%\.ssh\id_ed25519" root@192.168.100.21 "tar -xf - -C /opt/immich/library"
    ```
-3. Restore `immich-postgres.sql.gz` from the Track 1 `restic` snapshot into `immich_postgres` (with `immich_server` stopped, `database` running):
+5. Restore `immich-postgres.sql.gz` from Track 1 `restic` into `immich_postgres` (with `immich_server` stopped, `database` running):
    ```bash
-   gunzip -c immich-postgres.sql.gz | pct exec 610 -- docker exec -i immich_postgres psql -U postgres
-   pct exec 610 -- docker compose -f /opt/immich/docker-compose.yml up -d
+   gunzip -c immich-postgres.sql.gz | pct exec 121 -- docker exec -i immich_postgres psql -U postgres
+   pct exec 121 -- docker compose -f /opt/immich/docker-compose.yml up -d
    ```
 
 ## 7. Manual Gaps
 
-- Keep `vault_restic_password` and `.vault_pass` backed up offline (emergency sheet / encrypted USB) outside the `restic` repo itself.
-- If using an external USB drive for Track 2 photos, plug it in periodically and run `--photos-only` (it transfers only newly added photos).
-- Both `pull-homelab-backups.sh` and `pull-homelab-backups.bat` deliberately omit deletes on Track 2 so an accidental deletion inside Immich does not wipe your PC backup copy.
-- If you pull from a separate Windows PC whose SSH public key is not in `terraform.tfvars` (`ssh_public_key_path`), re-authorize that `.pub` key on CT `610` and `haytham` after any full CT rebuild.
-
-## 8. FAQ
-
-**Q: Why pull from Windows instead of pushing from Proxmox?**
-A: Windows workstations sleep or power off overnight; pull never fails while asleep, requires no Samba/SMB shares, and keeps Proxmox free of write credentials to your PC.
-
-**Q: Why does `pull-homelab-backups.bat` use built-in `ssh.exe` + `tar.exe` instead of `rclone` or `scp`?**
-A: Third-party unsigned binaries like `rclone.exe` can be blocked by Windows Smart App Control / Device Guard, while `scp -r` is not incremental (re-copies every file on every run). Streaming a local manifest (`size?path`) to CT `610`'s `python3` + GNU `tar` and piping into Windows inbox `tar.exe` uses only Microsoft-signed built-in binaries while keeping Track 2 fast, incremental, and resumable.
+- Keep `vault_restic_password`, `CT 110`'s `ENCRYPTION_KEY` + `AUTH_SECRET`, and `haytham-control-bundle-*.tar.age` backed up offline (Windows KeePassXC + encrypted USB).
+- Periodically plug in your external USB drive for Track 2 photos and run `scripts\pull-homelab-backups.bat --photos-only`.
+- Both pull scripts deliberately omit deletes on Track 2 so an accidental deletion inside Immich never wipes your PC backup copy.

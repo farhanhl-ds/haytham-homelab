@@ -1,0 +1,73 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+# Human-Only Mutating Wrapper — Ansible Playbook Apply
+# NEVER granted to homelab-agent in sudoers. Requires interactive human TTY.
+
+validate_playbook_arg() {
+  local pb="$1"
+  case "${pb}" in
+    host_devices.yml|host_backups.yml|zone2_protected.yml|zone3_infra.yml|zone4_apps.yml)
+      return 0
+      ;;
+    *)
+      echo "[ERROR] Disallowed or invalid playbook '${pb}'." >&2
+      echo "        Allowed: host_devices.yml, host_backups.yml, zone2_protected.yml, zone3_infra.yml, zone4_apps.yml" >&2
+      return 2
+      ;;
+  esac
+}
+
+if [[ "${1:-}" == "--validate-only" ]]; then
+  [[ "$#" -eq 2 ]] || exit 2
+  validate_playbook_arg "$2"
+  exit $?
+fi
+
+if [[ "$#" -ne 1 ]]; then
+  echo "Usage: ops-ansible-apply <host_devices.yml|host_backups.yml|zone2_protected.yml|zone3_infra.yml|zone4_apps.yml>" >&2
+  exit 2
+fi
+
+PLAYBOOK="$1"
+validate_playbook_arg "${PLAYBOOK}"
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# shellcheck source=_ops-infisical-lib.sh
+source "${SCRIPT_DIR}/_ops-infisical-lib.sh"
+
+require_human_tty
+trap cleanup_ephemeral_resources EXIT INT TERM
+audit_log "ops-ansible-apply" "prompt:${PLAYBOOK}"
+
+read -r -p "Run live Ansible playbook '${PLAYBOOK}'? Type 'YES' to proceed: " confirm
+if [[ "${confirm}" != "YES" ]]; then
+  audit_log "ops-ansible-apply" "aborted:${PLAYBOOK}"
+  echo "[ABORTED] Playbook not executed."
+  exit 1
+fi
+
+INF_PATHS=()
+case "${PLAYBOOK}" in
+  host_devices.yml)    INF_PATHS=() ;;
+  host_backups.yml)    INF_PATHS=("/proxmox") ;;
+  zone2_protected.yml) INF_PATHS=("/zone2") ;;
+  zone3_infra.yml)     INF_PATHS=("/zone3") ;;
+  zone4_apps.yml)      INF_PATHS=("/zone4") ;;
+esac
+
+start_ephemeral_ssh_agent
+
+EXTRA_ARGS=()
+if [[ "${#INF_PATHS[@]}" -gt 0 ]]; then
+  infisical_export_ansible_shm "${INF_PATHS[@]}"
+  EXTRA_ARGS+=("-e" "@${OPS_SHM_SECRETS_FILE}")
+fi
+
+audit_log "ops-ansible-apply" "executing:${PLAYBOOK}"
+cd "${OPS_REPO_DIR}/ansible"
+ansible-playbook \
+  "${EXTRA_ARGS[@]}" \
+  "${PLAYBOOK}"
+
+audit_log "ops-ansible-apply" "ok:${PLAYBOOK}"

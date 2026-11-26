@@ -1,28 +1,32 @@
 ---
-- Core Infrastructure:
+- Core Infrastructure & Security:
     - Proxmox VE:
         icon: proxmox.png
         href: https://pve.{{ homelab_domain }}
-        description: Hypervisor (haytham · .2)
+        description: Hypervisor (Zone 0 · .2)
+    - Infisical:
+        icon: infisical.png
+        href: https://infisical.{{ homelab_domain }}
+        description: Secrets Manager (Zone 1 · CT 110 · .10)
     - Pi-hole:
         icon: pi-hole.png
         href: https://pihole.{{ homelab_domain }}
-        description: DNS & Adblock (CT 110 · .11)
+        description: DNS & Adblock (Zone 3 · CT 130 · .30)
     - Nginx Proxy Manager:
         icon: nginx-proxy-manager.png
         href: https://npm.{{ homelab_domain }}
-        description: Reverse Proxy & SSL (CT 120 · .12)
+        description: Reverse Proxy & SSL (Zone 3 · CT 131 · .31)
 
-- Applications & Media:
+- Protected Data & Operations:
     - Vaultwarden:
         icon: vaultwarden.png
         href: https://vaultwarden.{{ homelab_domain }}
-        description: Password Manager (CT 320 · .32)
+        description: Password Manager (Zone 2 · CT 120 · .20)
     - Immich:
         icon: immich.png
         href: https://immich.{{ homelab_domain }}
-        description: Photos & Videos (CT 610 · .61)
+        description: Photos & Videos (Zone 2 · CT 121 · .21)
     - Uptime Kuma:
         icon: uptime-kuma.png
         href: https://uptime.{{ homelab_domain }}
-        description: Service Monitoring (CT 910 · .91)
+        description: Service Monitoring (Zone 4 · CT 141 · .41)

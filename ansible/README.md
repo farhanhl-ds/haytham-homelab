@@ -1,32 +1,29 @@
 # Haytham Homelab — Ansible
 
-Ansible configuration for the `haytham` homelab. Run from a WSL Ubuntu 24.04 checkout of this repository.
+Ansible configuration for the `haytham` homelab organized by **Security Zones (`ID = 100 + IP`, `ADR-008`)**.
 
 > Canonical docs live in `kb/`:
-> - Strategy & Vault workflow: [kb/architecture/ansible-strategy.md](../kb/architecture/ansible-strategy.md)
+> - Zero-Trust Control Node & Security Zones: [kb/decisions/ADR-008-zero-trust-security-zones-and-infisical.md](../kb/decisions/ADR-008-zero-trust-security-zones-and-infisical.md)
+> - Hardening & Recovery Runbook: [kb/operations/control-node-hardening-and-recovery.md](../kb/operations/control-node-hardening-and-recovery.md)
 > - Full build runbook: [kb/operations/build-from-scratch.md](../kb/operations/build-from-scratch.md)
-> - Secret rotation: [kb/operations/secret-rotation.md](../kb/operations/secret-rotation.md)
 > - Backup & restore: [kb/operations/backup-and-restore.md](../kb/operations/backup-and-restore.md)
-> - Lean 8 GB scope & deferred tiers: [kb/decisions/ADR-007-lean-8gb-phase1.md](../kb/decisions/ADR-007-lean-8gb-phase1.md)
 
-## Quick Start
+## Execution Model (OS Privilege Split)
+
+Secrets are **not** stored in `ansible/.vault_pass` or `group_vars/*.yml`. All secrets live in **Zone 1 Immutable Infisical (`CT 110` @ `192.168.100.10`)** and are injected into RAM (`/dev/shm`) at runtime by `/usr/local/libexec/haytham-ops/ops-ansible-*`.
 
 ```bash
-# 1. Control-node dependencies (fresh WSL)
-sudo apt install -y ansible openssh-client bind9-dnsutils rsync
-ansible-galaxy collection install -r requirements.yml
+# AI Agent (homelab-agent) — read-only dry-run ONLY:
+sudo -u homelab-ops /usr/local/libexec/haytham-ops/ops-ansible-check host_devices.yml
+sudo -u homelab-ops /usr/local/libexec/haytham-ops/ops-ansible-check zone3_infra.yml
+sudo -u homelab-ops /usr/local/libexec/haytham-ops/ops-ansible-check zone2_protected.yml
+sudo -u homelab-ops /usr/local/libexec/haytham-ops/ops-ansible-check zone4_apps.yml
+sudo -u homelab-ops /usr/local/libexec/haytham-ops/ops-ansible-check host_backups.yml
 
-# 2. Replace any CHANGEME secret in group_vars/*.yml with `ansible-vault encrypt_string`
-#    (see kb/architecture/ansible-strategy.md)
-
-# 3. Run playbooks in dependency order (Phase 1 lean 8 GB stack)
-ansible-playbook host_devices.yml
-ansible-playbook tier10.yml
-ansible-playbook tier30.yml
-ansible-playbook tier40.yml
-ansible-playbook tier60.yml
-ansible-playbook tier90.yml
-ansible-playbook tier80.yml
+# Human Operator (sudo -iu homelab-ops) — live apply in dependency order:
+ops-ansible-apply host_devices.yml
+ops-ansible-apply zone3_infra.yml
+ops-ansible-apply zone2_protected.yml
+ops-ansible-apply zone4_apps.yml
+ops-ansible-apply host_backups.yml
 ```
-
-*Deferred playbooks (`tier20.yml`, `karakeep` in `tier40.yml`) are preserved in-repo for revival after the 16 GB RAM upgrade.*

@@ -18,9 +18,9 @@
       {{ dict(pve_ct_configs.results | map(attribute='item')
          | zip(pve_ct_configs.results | map(attribute='stdout'))) }}
 
-- name: Detect container render GID inside CT 610 (Ubuntu 24.04)
+- name: Detect container render GID inside CT 121 Immich (Ubuntu 24.04)
   ansible.builtin.command:
-    argv: [pct, exec, "610", "--", getent, group, render]
+    argv: [pct, exec, "121", "--", getent, group, render]
   register: immich_render_group
   changed_when: false
   failed_when: false

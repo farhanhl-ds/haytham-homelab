@@ -32,16 +32,16 @@ pve.haytham.internal          → Proxmox UI (192.168.100.2)
 
 ## 3. Implementation (Pi-hole)
 
-Single wildcard dnsmasq record `*.haytham.internal → 192.168.100.12` (NPM):
+Single wildcard dnsmasq record `*.haytham.internal → 192.168.100.31` (NPM):
 
-- File `/etc/dnsmasq.d/99-wildcard-haytham.conf` via Ansible template (see `services/network-pihole-110.md`).
+- File `/etc/dnsmasq.d/99-wildcard-haytham.conf` via Ansible template (see `services/zone3-pihole-130.md`).
 - Pi-hole v6 does not load `/etc/dnsmasq.d/` by default — the role must set `pihole-FTL --config misc.etc_dnsmasq_d true` + restart.
 - Web UI Local DNS Records cannot do wildcards — the custom config file is the only path.
-- Verify with a direct query (bypasses OS default resolver): `dig karakeep.haytham.internal @192.168.100.11` → `192.168.100.12`.
+- Verify with a direct query (bypasses OS default resolver): `dig karakeep.haytham.internal @192.168.100.30` → `192.168.100.31`.
 
 ## 4. Client / router policy
 
-- Workstation testing uses manual DNS (`192.168.100.11` first). Router-level Primary DNS change waits until Pi-hole + NPM verify green (blast radius = all home devices). Secondary policy is decided at cutover time.
+- Workstation testing uses manual DNS (`192.168.100.30` first). Router-level Primary DNS change waits until Pi-hole + NPM verify green (blast radius = all home devices). Secondary policy is decided at cutover time.
 - DNS order matters: clients stop at the first definitive answer (including NXDOMAIN). See `operations/dns-workstation-swap.md`.
 
 ## 5. Container-level DNS (Terraform default)
@@ -51,7 +51,7 @@ LXC containers use public resolvers (`dns_servers = ["1.1.1.1", "1.0.0.1"]`). Th
 - Containers must resolve public names (`apt`, Docker Hub) during provisioning, exactly when Pi-hole itself may be down or absent. Pointing containers at Pi-hole creates a circular dependency.
 - Nothing inside a container needs `*.haytham.internal`: Ansible reaches hosts by IP, and inter-service traffic uses IPs. Internal names are only needed on operator workstations and LAN clients.
 
-Do not point containers at `192.168.100.11` unless a container genuinely needs internal names at runtime.
+Do not point containers at `192.168.100.30` unless a container genuinely needs internal names at runtime.
 
 ## 6. FAQ
 

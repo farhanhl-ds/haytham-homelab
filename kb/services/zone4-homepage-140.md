@@ -1,16 +1,16 @@
 ---
 id: svc-homepage-440
-title: Homepage — Tier 40 Dashboard (CTID 440)
+title: Homepage — Tier 40 Dashboard (CTID 140)
 tier: "40"
-ctid: "440"
-ip: 192.168.100.44
+ctid: "140"
+ip: 192.168.100.40
 status: planned
 last_verified: unreleased
 tags: [homepage, dashboard, tier40, docker]
 retrievable: true
 ---
 
-# Homepage — Tier 40 Dashboard (CTID 440)
+# Homepage — Tier 40 Dashboard (CTID 140)
 
 ## 1. Purpose
 
@@ -20,7 +20,7 @@ Lightweight application dashboard served at the root domain `https://haytham.int
 
 | Field | Value |
 |---|---|
-| CTID / IP | 440 / `192.168.100.44` (see `../reference/ip-ctid-matrix.md`) |
+| CTID / IP | 440 / `192.168.100.40` (see `../reference/ip-ctid-matrix.md`) |
 | Resources | 1 core / 384 MB RAM / 512 MB swap / 4 GB disk |
 | Base | Ubuntu 24.04 LXC + Docker (`roles/docker`), `ghcr.io/gethomepage/homepage:v2.8.0` |
 | Port | `3000` |
@@ -32,19 +32,19 @@ Lightweight application dashboard served at the root domain `https://haytham.int
 
 ## 4. Configuration
 
-- **`HOMEPAGE_ALLOWED_HOSTS` (mandatory since v1.0):** Set to `haytham.internal,192.168.100.44:3000` in compose. Missing this triggers `Host validation failed` when accessed through NPM.
+- **`HOMEPAGE_ALLOWED_HOSTS` (mandatory since v1.0):** Set to `haytham.internal,192.168.100.40:3000` in compose. Missing this triggers `Host validation failed` when accessed through NPM.
 - **No secrets required:** Pure YAML config in `/opt/homepage/config` (backed up daily in Track 1 `restic`).
-- **NPM Proxy Host:** `haytham.internal → 192.168.100.44:3000`, wildcard cert `haytham-internal`, Force SSL + HTTP/2.
-- **Pi-hole DNS note:** `/etc/dnsmasq.d/99-wildcard-haytham.conf` uses `address=/.haytham.internal/192.168.100.12`, which covers both `*.haytham.internal` and the apex `haytham.internal`.
+- **NPM Proxy Host:** `haytham.internal → 192.168.100.40:3000`, wildcard cert `haytham-internal`, Force SSL + HTTP/2.
+- **Pi-hole DNS note:** `/etc/dnsmasq.d/99-wildcard-haytham.conf` uses `address=/.haytham.internal/192.168.100.31`, which covers both `*.haytham.internal` and the apex `haytham.internal`.
 
 ## 5. Verification
 
 ```bash
-ssh root@192.168.100.44 "docker ps"
+ssh root@192.168.100.40 "docker ps"
 # Expect: homepage Up
 
-dig haytham.internal @192.168.100.11 +short
-# Expect: 192.168.100.12
+dig haytham.internal @192.168.100.30 +short
+# Expect: 192.168.100.31
 
 curl -kI https://haytham.internal
 # Expect: HTTP/2 200

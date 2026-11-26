@@ -6,7 +6,7 @@
 
 - name: Fail clearly if /dev/net/tun passthrough is missing
   ansible.builtin.fail:
-    msg: "/dev/net/tun missing inside CT 130. Run `ansible-playbook host_devices.yml` first."
+    msg: "/dev/net/tun missing inside CT 132. Run `ops-ansible-apply host_devices.yml` first."
   when: not tun_device.stat.exists
 
 - name: Enable IPv4 and IPv6 forwarding for subnet routing
@@ -90,9 +90,9 @@
 - name: Remind operator of interactive auth step when no authkey is configured
   ansible.builtin.debug:
     msg: >-
-      Tailscale installed on CT 130. Authenticate once via SSH:
+      Tailscale installed on CT 132. Authenticate once via SSH:
       tailscale up --advertise-routes={{ tailscale_advertise_routes }} --accept-dns={{ tailscale_accept_dns | lower }}
-      Then approve {{ tailscale_advertise_routes }} in Tailscale Admin Console and set Split DNS for haytham.internal -> 192.168.100.11.
+      Then approve {{ tailscale_advertise_routes }} in Tailscale Admin Console and set Split DNS for haytham.internal -> 192.168.100.30.
   when:
     - tailscale_backend_state != "Running"
     - tailscale_authkey == "CHANGEME" or (tailscale_authkey | length) == 0

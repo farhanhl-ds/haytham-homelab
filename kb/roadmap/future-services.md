@@ -26,7 +26,7 @@ retrievable: true
 
 | CTID/VMID | IP | Service | Trigger / Revival Path |
 |---|---|---|---|
-| 100 (VM) | .3 | Home Assistant OS | 16 GB RAM upgrade — build via `../services/vm-haos-100.md` (`qm`) |
+| 100 (VM) | .3 | Home Assistant OS | 16 GB RAM upgrade — build via `../services/vm-haos-103.md` (`qm`) |
 | 210 | .21 | Postgres (shared) | Concrete external-PG consumer (e.g., Outline) — set `enabled = true` in `locals.tf` + uncomment `hosts.yml` + `tier20.yml` |
 | 220 | .22 | Redis (shared) | Concrete external-Redis consumer — revive with Tier 20 |
 | 230 | .23 | pgAdmin | Revive alongside Postgres (`210`) |

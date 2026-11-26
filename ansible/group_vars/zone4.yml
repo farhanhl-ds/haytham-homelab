@@ -1,0 +1,9 @@
+---
+# Zone 4 · Ephemeral Apps & Ops (CT 140 Homepage, CT 141 Uptime Kuma; deferred 142 pgAdmin).
+# Secrets (when pgAdmin is revived) are injected at runtime from Zone 1 Infisical path `/zone4`.
+
+uptime_kuma_version: 2.5.6
+pgadmin_default_email: admin@haytham.internal
+
+# Runtime secrets injected from Zone 1 Infisical (/zone4):
+vault_pgadmin_default_password: CHANGEME

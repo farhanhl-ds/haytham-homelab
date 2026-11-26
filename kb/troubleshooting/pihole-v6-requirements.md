@@ -2,8 +2,8 @@
 id: ts-pihole-v6-requirements
 title: Pi-hole v6 Requirements
 tier: "10"
-ctid: "110"
-ip: 192.168.100.11
+ctid: "130"
+ip: 192.168.100.30
 status: planned
 last_verified: unreleased
 tags: [troubleshooting, pihole, dns]
@@ -26,7 +26,7 @@ Build the role against these v6 behaviors from the start — they are requiremen
 ## 3. Wildcard via dnsmasq file, not UI
 
 - Web UI Local DNS handles exact domains only.
-- Required file `/etc/dnsmasq.d/99-wildcard-haytham.conf` (`server=/haytham.internal/#` + `address=/.haytham.internal/192.168.100.12`).
+- Required file `/etc/dnsmasq.d/99-wildcard-haytham.conf` (`server=/haytham.internal/#` + `address=/.haytham.internal/192.168.100.31`).
 
 ## 4. v6 ignores that directory by default
 

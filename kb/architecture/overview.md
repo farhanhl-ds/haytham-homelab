@@ -43,7 +43,7 @@ Full table in `tier-and-ctid-scheme.md`. Summary:
 | 60 | Media (Immich 610) | Active (self-contained bundle + Quick Sync `/dev/dri`) |
 | 80 | Backup & DR (host `haytham`) | Active (daily encrypted `restic` + WSL SSH pull) |
 | 90 | Observability (Uptime Kuma 910) | Active |
-| VM 100 | HAOS (manual, not Terraform) | Deferred until 16 GB RAM (`ADR-007`) |
+| VM 103 | HAOS (manual, not Terraform) | Deferred until 16 GB RAM (`ADR-007`) |
 
 Default: **1 service = 1 LXC**, except apps distributed as multi-container bundles (Immich: server + ML + Valkey + Postgres/VectorChord; Karakeep when revived) which stay self-contained in one LXC.
 

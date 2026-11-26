@@ -1,9 +1,7 @@
 ---
-# Proxmox host (`haytham`) — LXC device passthrough + Tier 80 automated backups.
-# SECRET BOOTSTRAP: replace CHANGEME with ansible-vault encrypt_string output:
-#   SECRET=$(openssl rand -base64 32 | tr -dc 'a-zA-Z0-9' | head -c 32)
-#   ansible-vault encrypt_string "$SECRET" --name 'vault_restic_password'
-#   unset SECRET; history -c
+# Zone 0 Proxmox host (`haytham` @ 192.168.100.2) — LXC device passthrough + automated backups.
+# Secret `vault_restic_password` is injected at runtime from Zone 1 Infisical path `/proxmox`
+# by ops-ansible-{check,apply}. Never commit real secrets here.
 backup_base_dir: /var/backups/homelab
 backup_restic_repo: "{{ backup_base_dir }}/restic"
 backup_staging_dir: "{{ backup_base_dir }}/staging"
@@ -14,18 +12,13 @@ backup_vzdump_schedule_oncalendar: "Sun *-*-* 03:30:00"
 backup_vzdump_storage: local
 backup_vzdump_keep_last: 2
 backup_vzdump_ctids:
-  - 110
-  - 120
-  - 130
-  - 320
-  - 440
-  - 910
+  - 110 # Zone 1 Immutable Infisical
+  - 120 # Zone 2 Vaultwarden
+  - 130 # Zone 3 Pi-hole
+  - 131 # Zone 3 NPM
+  - 132 # Zone 3 Tailscale
+  - 140 # Zone 4 Homepage
+  - 141 # Zone 4 Uptime Kuma
 
-vault_restic_password: !vault |
-          $ANSIBLE_VAULT;1.1;AES256
-          33396332346664383463646461656464626639303561663863636265313435643632636265313862
-          3966613662626235626665623066316164633232666366620a623230373638376535373564333830
-          37353236663264306263343262393337626365656363386638326437396134333233346431653530
-          6139313931346165320a623261346536633539643232636434366166323639616561373534383335
-          36623136363537306466306662393633613136643734636630633430306331313830666533383234
-          6336633365643432373338373338336431376562666332376662
+# Runtime secret injected from Zone 1 Infisical (/proxmox):
+vault_restic_password: CHANGEME

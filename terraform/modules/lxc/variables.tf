@@ -47,7 +47,7 @@ variable "bridge" {
 }
 
 variable "ip_address_cidr" {
-  description = "Format: 192.168.100.11/24"
+  description = "Format: 192.168.100.30/24"
   type        = string
 }
 
@@ -98,4 +98,16 @@ variable "tags" {
 variable "start_on_boot" {
   type    = bool
   default = true
+}
+
+variable "protection" {
+  description = "Enable Proxmox hypervisor protection flag (blocks destructive API/CLI removal; true for Zone 2 Protected Data)"
+  type        = bool
+  default     = false
+}
+
+variable "pool_id" {
+  description = "Proxmox resource pool ID (homelab-protected for Zone 2, homelab-ephemeral for Zones 3-5)"
+  type        = string
+  default     = null
 }

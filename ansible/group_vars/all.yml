@@ -1,5 +1,5 @@
 ---
 # Shared, non-secret variables. See kb/architecture/ansible-strategy.md.
+# SSH authentication uses the ephemeral ssh-agent started by /usr/local/libexec/haytham-ops/ops-ansible-*.
 homelab_domain: haytham.internal
 ansible_user: root
-ansible_ssh_private_key_file: ~/.ssh/id_ed25519

@@ -1,0 +1,23 @@
+---
+# Zone 2 · Protected Data / Stateful P0 (CT 120 Vaultwarden, CT 121 Immich; deferred 122 Postgres, 123 Karakeep).
+# Secrets are injected at runtime into RAM (/dev/shm) from Zone 1 Infisical path `/zone2`
+# by ops-ansible-{check,apply}. Never commit real secrets here.
+
+# Immich (CT 121 @ 192.168.100.21)
+immich_version: v3.4.2
+immich_timezone: Asia/Jakarta
+immich_ml_workers: 1
+immich_ml_request_threads: 2
+
+# Deferred PostgreSQL (CT 122 @ 192.168.100.22)
+postgres_listen_addresses: "*"
+postgres_allowed_subnet: 192.168.100.0/24
+postgres_databases: []
+
+# Runtime secrets injected from Zone 1 Infisical (/zone2):
+vault_vaultwarden_admin_token: CHANGEME
+vault_immich_db_password: CHANGEME
+vault_postgres_superuser_password: CHANGEME
+vault_karakeep_nextauth_secret: CHANGEME
+vault_karakeep_meili_master_key: CHANGEME
+vault_karakeep_browser_token: CHANGEME

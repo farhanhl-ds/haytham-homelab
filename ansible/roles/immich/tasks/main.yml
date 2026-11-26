@@ -7,13 +7,13 @@
 - name: Warn if /dev/dri/renderD128 is missing
   ansible.builtin.debug:
     msg: >-
-      /dev/dri/renderD128 not detected in CT 610. Run `ansible-playbook host_devices.yml`
+      /dev/dri/renderD128 not detected in CT 121. Run `ops-ansible-apply host_devices.yml`
       before enabling Intel Quick Sync hardware transcoding in Immich Admin UI.
   when: not dri_device.stat.exists
 
-- name: Guard against unencrypted CHANGEME database password
+- name: Guard against unset CHANGEME database password
   ansible.builtin.fail:
-    msg: "vault_immich_db_password is still CHANGEME in group_vars/tier60.yml. Encrypt a real password first."
+    msg: "vault_immich_db_password is still CHANGEME. Populate it in Zone 1 Infisical (/zone2) and run via ops-ansible-apply."
   when: immich_db_password == "CHANGEME"
 
 - name: Create Immich directories

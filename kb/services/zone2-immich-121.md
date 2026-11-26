@@ -1,16 +1,16 @@
 ---
 id: svc-immich-610
-title: Immich — Tier 60 Media (CTID 610)
+title: Immich — Tier 60 Media (CTID 121)
 tier: "60"
-ctid: "610"
-ip: 192.168.100.61
+ctid: "121"
+ip: 192.168.100.21
 status: planned
 last_verified: unreleased
 tags: [immich, photos, media, tier60, docker, quicksync]
 retrievable: true
 ---
 
-# Immich — Tier 60 Media (CTID 610)
+# Immich — Tier 60 Media (CTID 121)
 
 ## 1. Purpose
 
@@ -20,7 +20,7 @@ Self-hosted photo and video backup/management platform (primary home for migrate
 
 | Field | Value |
 |---|---|
-| CTID / IP | 610 / `192.168.100.61` (see `../reference/ip-ctid-matrix.md`) |
+| CTID / IP | 610 / `192.168.100.21` (see `../reference/ip-ctid-matrix.md`) |
 | Resources | 3 cores / 4,096 MB RAM / 2,048 MB swap / 500 GB thin-provisioned disk (`local-lvm`) |
 | Base | Ubuntu 24.04 LXC + Docker (`roles/docker`), 4-container bundle: `immich-server`, `immich-machine-learning`, `valkey:9`, `postgres:14-vectorchord` |
 | Device passthrough | `/dev/dri/renderD128` + `/dev/dri/card0` via `ansible/host_devices.yml` (Intel HD 630 Quick Sync) |
@@ -37,7 +37,7 @@ Self-hosted photo and video backup/management platform (primary home for migrate
 - **Secret:** `vault_immich_db_password` in `group_vars/tier60.yml` (32-char alphanumeric; written to `/opt/immich/.env` with `mode: 0600` and `no_log: true`).
 - **8 GB RAM tuning:** `MACHINE_LEARNING_WORKERS=1` and `MACHINE_LEARNING_REQUEST_THREADS=2` prevent ML jobs from starving other containers during bulk iPhone uploads.
 - **Intel Quick Sync:** After first login, open **Administration → Settings → Video Transcoding → Hardware Acceleration** and select **Quick Sync**.
-- **NPM Proxy Host:** `immich.haytham.internal → 192.168.100.61:2283`, wildcard cert, Force SSL + HTTP/2, **Websockets Support ON**, and add Custom Nginx Configuration for large video uploads:
+- **NPM Proxy Host:** `immich.haytham.internal → 192.168.100.21:2283`, wildcard cert, Force SSL + HTTP/2, **Websockets Support ON**, and add Custom Nginx Configuration for large video uploads:
   ```nginx
   client_max_body_size 50000M;
   proxy_read_timeout 600s;
@@ -50,10 +50,10 @@ Self-hosted photo and video backup/management platform (primary home for migrate
 ## 5. Verification
 
 ```bash
-pct exec 610 -- ls -la /dev/dri
+pct exec 121 -- ls -la /dev/dri
 # Expect: card0 and renderD128 present
 
-ssh root@192.168.100.61 "docker ps"
+ssh root@192.168.100.21 "docker ps"
 # Expect: 4 containers Up (immich_server, immich_machine_learning, immich_redis, immich_postgres — healthy)
 ```
 

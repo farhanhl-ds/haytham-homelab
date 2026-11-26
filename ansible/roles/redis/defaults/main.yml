@@ -1,6 +1,6 @@
 ---
-# Redis defaults. Password comes from group_vars/tier20.yml (vault_redis_password).
-# Gated to LAN subnet via pg_hba-style reasoning: bind-all + requirepass is
-# acceptable on 192.168.100.0/24. kb/services/data-redis-220.md
+# Redis defaults — Zone 3 Core Infra (CT 133 @ 192.168.100.33, deferred).
+# Secret `vault_redis_password` injected at runtime from Zone 1 Infisical (/zone3).
+# kb/services/zone3-redis-133.md
 redis_conf: /etc/redis/redis.conf
 redis_password: "{{ vault_redis_password }}"

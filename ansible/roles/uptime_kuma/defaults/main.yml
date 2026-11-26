@@ -1,10 +1,10 @@
 ---
-# Uptime Kuma defaults — Tier 90 observability.
-# kb/services/obs-uptime-kuma-910.md
+# Uptime Kuma defaults — Zone 4 Ephemeral Ops (CT 141 @ 192.168.100.41).
+# kb/services/zone4-uptime-kuma-141.md
 uptime_kuma_data_dir: /opt/uptime-kuma
 uptime_kuma_version: 2.5.6
 uptime_kuma_image: "louislam/uptime-kuma:{{ uptime_kuma_version }}"
 uptime_kuma_port: 3001
 uptime_kuma_dns_servers:
-  - 192.168.100.11
+  - 192.168.100.30
   - 1.1.1.1

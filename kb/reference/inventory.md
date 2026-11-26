@@ -20,7 +20,7 @@ retrievable: true
 - Hardware: Lenovo ThinkCentre M910q Tiny — **Intel Core i5 7th gen (4c/4t, Intel HD 630 Quick Sync), 8 GB RAM (upgrade to 16 GB planned), 1 TB SSD**.
 - Service account `terraform@pve!terraform` (privsep off). Roles: `PVEVMAdmin` on `/`, `PVESDNUser` on SDN zone, `PVEDatastoreUser` on `local` + `local-lvm`, `PVEAuditor` on `/` (for `query-url-metadata`).
 - Template: `local:vztmpl/ubuntu-24.04-standard_24.04-2_amd64.tar.zst` (downloaded manually via GUI, referenced as static string — see ADR-002).
-- Deferred VM: VM100 HAOS at `192.168.100.3` (DHCP reservation, MAC `BC:24:11:D7:75:C0`, deferred until 16 GB RAM per ADR-007). VM block `.4-.10` reserved.
+- Deferred VM: VM 103 HAOS at `192.168.100.3` (DHCP reservation, MAC `BC:24:11:D7:75:C0`, deferred until 16 GB RAM per ADR-007). VM block `.4-.10` reserved.
 
 ## Terraform
 
@@ -51,8 +51,8 @@ retrievable: true
 ## SSL & DNS
 
 - Wildcard `*.haytham.internal` self-signed cert (covers both `*.haytham.internal` and root `haytham.internal`). Key/crt/cnf in `~/homelab-cert/` (control node) + Vaultwarden attachment + offline backup. Imported to NPM as Custom Certificate (`../architecture/ssl-strategy.md`).
-- Wildcard `*.haytham.internal → 192.168.100.12` in Pi-hole (`/etc/dnsmasq.d/99-wildcard-haytham.conf`, `misc.etc_dnsmasq_d=true`).
-- Tailscale Split DNS: `haytham.internal → 192.168.100.11` over subnet route `192.168.100.0/24`.
+- Wildcard `*.haytham.internal → 192.168.100.31` in Pi-hole (`/etc/dnsmasq.d/99-wildcard-haytham.conf`, `misc.etc_dnsmasq_d=true`).
+- Tailscale Split DNS: `haytham.internal → 192.168.100.30` over subnet route `192.168.100.0/24`.
 - Router DHCP pool `.100–.254`. Router DNS stays ISP default until Pi-hole cutover.
 
 ## SSH Keys & Certificates Matrix
@@ -71,8 +71,8 @@ flowchart LR
 
   subgraph LAB["Homelab (haytham - 192.168.100.0/24)"]
     PVE["Proxmox Host (.2)\nauthorized_keys: control node + PC"]
-    NPM["CT 120 NPM (.12)\nauthorized_keys: control node\nTLS: haytham-internal.{key,crt}"]
-    IMMICH["CT 610 Immich (.61)\nauthorized_keys: control node + PC"]
+    NPM["CT 131 NPM (.12)\nauthorized_keys: control node\nTLS: haytham-internal.{key,crt}"]
+    IMMICH["CT 121 Immich (.61)\nauthorized_keys: control node + PC"]
     OTHER["Other LXCs (.11 .13 .32 .44 .91)\nPi-hole, Tailscale, Vaultwarden,\nHomepage, Uptime Kuma\nauthorized_keys: control node"]
   end
 
@@ -96,7 +96,7 @@ flowchart LR
 | **Windows PC** (off-host backup client) | Key pair `%USERPROFILE%\.ssh\id_ed25519{,.pub}` (private key stays local; `.pub` authorized on `.2` & `.61` for `pull-homelab-backups.bat`) | `haytham-internal.crt` (public cert only) installed in Windows **Trusted Root CA** (`certmgr.msc`); install on mobile/other client devices too |
 | **Linux Control Node** (`devbox` / WSL) | Primary admin key pair `~/.ssh/id_ed25519{,.pub}` (loaded into `ssh-agent` for Terraform; `.pub` referenced by `terraform.tfvars` `ssh_public_key_path`) | Master wildcard bundle `~/homelab-cert/haytham-internal.{key,crt,cnf}` (`.key` `chmod 600`; never commit) |
 | **Proxmox `haytham` (`.2`)** | `/root/.ssh/authorized_keys` (`/etc/pve/priv/authorized_keys`): Control node `.pub` (Terraform/Ansible) + Windows PC `.pub` (Track 1 `restic` pull) | Built-in Proxmox `:8006` cert internally; accessed via NPM at `https://pve.haytham.internal` |
-| **CT `120` NPM (`.12`)** | `/root/.ssh/authorized_keys`: Control node `.pub` (injected by Terraform) | **Only container holding the wildcard cert:** `haytham-internal.key` + `haytham-internal.crt` imported once in NPM UI and attached to all Proxy Hosts (`../services/network-npm-120.md`) |
+| **CT `120` NPM (`.12`)** | `/root/.ssh/authorized_keys`: Control node `.pub` (injected by Terraform) | **Only container holding the wildcard cert:** `haytham-internal.key` + `haytham-internal.crt` imported once in NPM UI and attached to all Proxy Hosts (`../services/zone3-npm-131.md`) |
 | **CT `610` Immich (`.61`)** | `/root/.ssh/authorized_keys`: Control node `.pub` (Terraform) + Windows PC `.pub` (Track 2 photo pull; re-add after full CT rebuild unless added to Terraform) | None (NPM terminates HTTPS) |
 | **Other Active LXCs** (`110`, `130`, `320`, `440`, `910`) | `/root/.ssh/authorized_keys`: Control node `.pub` only (injected by Terraform) | None (NPM terminates HTTPS) |
 

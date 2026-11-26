@@ -2,7 +2,7 @@
 id: ts-haos-boot-requirements
 title: HAOS Boot Requirements (BIOS machine storage)
 tier: "vm"
-ctid: "100"
+ctid: "103"
 ip: 192.168.100.3
 status: planned
 last_verified: unreleased
@@ -23,7 +23,7 @@ Proxmox defaults mismatch the HAOS image build assumptions. All four overrides a
 | LSI 53C895A | `virtio-scsi-pci` |
 | no EFI disk | `efidisk0 local-lvm:1,efitype=4m,pre-enrolled-keys=0` |
 
-Exact command + GUI attach/boot-order steps: `services/vm-haos-100.md §3`.
+Exact command + GUI attach/boot-order steps: `services/vm-haos-103.md §3`.
 
 ## 2. Failure signature if skipped
 

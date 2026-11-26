@@ -1,50 +1,43 @@
 ---
 id: arch-tier-ctid
-title: Tier and CTID Scheme
+title: Security-Zone and ID Scheme
 tier: "x"
 ctid: "n/a"
 ip: n/a
 status: planned
 last_verified: unreleased
-tags: [architecture, tier, ctid]
+tags: [architecture, zones, ctid, security]
 retrievable: true
 ---
 
-# Tier and CTID Scheme
+# Security-Zone and ID Scheme
 
-## 1. Numbering
+## 1. Security-Zone Numbering (`ID = 100 + last_octet`)
 
-Steps of 10 per tier with gaps for expansion without renumbering. VMs are outside CTID numbering.
+`haytham-homelab` organizes all Proxmox guests into **Security Zones** based on **blast radius, data criticality, and Terraform lifecycle** (`ADR-008`), replacing the legacy functional 10–90 tier scheme. Every VM and LXC obeys `ID = 100 + last_octet` with 10 tight slots per zone:
 
-| Tier | Name | CTID range | Phase 1 Status | Services |
+| Zone | ID / IP Range | Lifecycle & Protection | Proxmox Pool / ACL | Phase 1 Active Services |
 |---|---|---|---|---|
-| 10 | Network / Ingress | 110–190 | **Active** | Pi-hole (`110`), NPM (`120`), Tailscale (`130`) |
-| 20 | Data / Persistence | 210–290 | Deferred (`ADR-007`) | Postgres (`210`), Redis (`220`), pgAdmin (`230`) |
-| 30 | Identity & Access | 310–390 | **Active** | Vaultwarden (`320`); SSO (`310`) & secrets manager (`330`) reserved |
-| 40 | Application | 410–490 | **Active** | Homepage (`440`); Karakeep (`420`) deferred (`ADR-007`) |
-| 50 | AI / ML | 510–590 | Reserved | Ollama (`510`), OpenWebUI (`520`) |
-| 60 | Media | 610–690 | **Active** | Immich (`610`) |
-| 70 | CI/CD & Automation | 710–790 | Reserved | — |
-| 80 | Backup & DR | host / 810–890 | **Active (host)** | Automated `restic` + `vzdump` on `haytham` + WSL SSH pull |
-| 90 | Observability | 910–990 | **Active** | Uptime Kuma (`910`); Portainer (`920`) optional |
-| VM | Virtual machines | 100, 101+ | Deferred (`ADR-007`) | HAOS (`100` at `.3`); `.4–.10` reserved for next VMs |
+| **Zone 0** | Host / `VM 103–109` (`.2`, `.3–.9`) | Physical Host & VMs (out-of-band) | ZERO `terraform@pve` ACL | Proxmox `haytham` + Host Backups (`.2`); HAOS (`VM 103`, deferred) |
+| **Zone 1** | `CT 110–119` (`.10–.19`) | **Immutable Core** (setup once, NEVER in Terraform) | `homelab-immutable` / `protection=1` / ZERO ACL | **Infisical (`110` / `.10`)** |
+| **Zone 2** | `CT 120–129` (`.20–.29`) | **Protected Data (Stateful P0)** | `homelab-protected` / `protection=1` / `HomelabProtectedOps` (NO destroy) | **Vaultwarden (`120`)**, **Immich (`121`)** *(deferred: Postgres `122`, Karakeep `123`)* |
+| **Zone 3** | `CT 130–139` (`.30–.39`) | **Core Infra / Network** (ephemeral) | `homelab-ephemeral` / `PVEVMAdmin` | **Pi-hole (`130`)**, **NPM (`131`)**, **Tailscale (`132`)** *(deferred: Redis `133`)* |
+| **Zone 4** | `CT 140–149` (`.40–.49`) | **Ephemeral Apps & Ops** (ephemeral) | `homelab-ephemeral` / `PVEVMAdmin` | **Homepage (`140`)**, **Uptime Kuma (`141`)** *(deferred: pgAdmin `142`)* |
+| **Zone 5** | `CT 150–159` (`.50–.59`) | **Sandbox / Lab** (100% disposable) | `homelab-ephemeral` / `PVEVMAdmin` | *(Reserved for future AI/dev experiments)* |
 
-Future reservations and revival triggers live in `../roadmap/future-services.md` and `../decisions/ADR-007-lean-8gb-phase1.md`.
+Canonical IP/ID table: `../reference/ip-ctid-matrix.md`.
 
-## 2. Per-tier notes
+## 2. Placement Rule (1-Question Test)
 
-- **1 service = 1 LXC** remains the architectural standard even on 8 GB RAM (`ADR-007`).
-- **Immich (`610`)** is a self-contained 4-container bundle (server + ML + Valkey + Postgres/VectorChord) in one LXC — same sanctioned multi-container exception as Karakeep (`420`). Do not wire Immich to shared Tier 20 Postgres/Redis.
-- **Tier 20 (Postgres/Redis/pgAdmin)** is preserved in IaC (`enabled = false` in `terraform/locals.tf`) and revives cleanly when an app actually requires shared Postgres or Redis.
-- **Tier 80 (Backup)** runs directly on Proxmox host `haytham` via `systemd` timers (`tier80.yml`) for zero idle container overhead.
+When adding a new service, ask: **"If this container is destroyed right now, is irreplaceable personal data lost?"**
 
-## 3. FAQ
+- **Bootstrap dependency for provisioning all other services** → **Zone 1** (outside Terraform, `protection=1`).
+- **Yes (irreplaceable user/repo/database state)** → **Zone 2** (`homelab-protected`, `protection=1`, P0 Track 1/2 backup). Examples: Vaultwarden, Immich, Postgres, Karakeep, Gitea, Neo4j, Paperless-ngx, Frigate.
+- **No (stateless or fully reproducible from Git)** → **Zone 3** (network/ingress/cache), **Zone 4** (dashboards/stateless tools/monitoring/CI runners like Homepage, Uptime Kuma, Stirling-PDF, CI Runner), or **Zone 5** (sandbox/experiments).
+- **Requires its own kernel/OS** → **Zone 0** (VM `103–109`).
 
-**Q: Can I insert a new service without renumbering?**
-A: Yes — use the next free multiple of 10 in the matching tier (e.g. next Tier 10 = `140`, next Tier 40 = `410`/`430`).
+## 3. Architectural Invariants
 
-**Q: Why is Immich CTID `610` and Uptime Kuma `910`?**
-A: Tiers 60 (Media) and 90 (Observability) are built into the 9-tier scheme (`10–90`). Dividing CTID by 10 gives `.61` and `.91` without colliding with other tiers.
-
-**Q: Does CTID appear in DNS?**
-A: No. DNS is human-memorable (`immich.haytham.internal`, `uptime.haytham.internal`); CTID is infra bookkeeping.
+- **1 service = 1 LXC** remains the standard (`ADR-007`).
+- **Self-contained multi-container exceptions:** `CT 110` Infisical (Infisical + PG + Redis), `CT 121` Immich (server + ML + Valkey + Postgres/VectorChord), and deferred `CT 123` Karakeep.
+- **Host-managed backups (`ansible/host_backups.yml`)** run directly on Proxmox host `haytham` (`.2`) via `systemd` timers for zero container overhead.

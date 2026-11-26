@@ -7,9 +7,10 @@ REM Zero WSL, zero third-party binaries (Device Guard / Smart App Control safe).
 REM Uses only Microsoft-signed inbox Windows tools: cmd.exe, ssh.exe, and tar.exe.
 REM
 REM Prerequisites:
-REM   SSH key at %USERPROFILE%\.ssh\id_ed25519 authorized on:
-REM     - CT 610 Immich (192.168.100.61) for Track 2 photos
-REM     - Proxmox host  (192.168.100.2)  for Track 1 restic state
+REM   Windows-only Break-Glass / Backup-Pull SSH key at %USERPROFILE%\.ssh\id_ed25519
+REM   (separate from devbox's revocable control-node key) authorized on:
+REM     - Zone 2 CT 121 Immich (192.168.100.21) for Track 2 photos
+REM     - Zone 0 Proxmox host  (192.168.100.2)  for Track 1 restic state (incl. CT 110 Infisical)
 REM
 REM Usage:
 REM   scripts\pull-homelab-backups.bat                 Pull both Track 1 + Track 2
@@ -21,7 +22,7 @@ REM   set "STATE_BACKUP_DIR=C:\Users\you\Backups\haytham\state"
 REM   set "PHOTOS_BACKUP_DIR=D:\Backups\haytham\immich-originals"
 
 if not defined PVE_HOST set "PVE_HOST=192.168.100.2"
-if not defined IMMICH_HOST set "IMMICH_HOST=192.168.100.61"
+if not defined IMMICH_HOST set "IMMICH_HOST=192.168.100.21"
 if not defined SSH_USER set "SSH_USER=root"
 if not defined SSH_KEY set "SSH_KEY=%USERPROFILE%\.ssh\id_ed25519"
 
@@ -195,7 +196,7 @@ echo Usage: %~nx0 [--state-only ^| --photos-only]
 echo.
 echo Environment overrides:
 echo   PVE_HOST          (default: 192.168.100.2)
-echo   IMMICH_HOST       (default: 192.168.100.61)
+echo   IMMICH_HOST       (default: 192.168.100.21)
 echo   SSH_USER          (default: root)
 echo   SSH_KEY           (default: %%USERPROFILE%%\.ssh\id_ed25519)
 echo   STATE_BACKUP_DIR  (default: %%USERPROFILE%%\Backups\haytham\state)

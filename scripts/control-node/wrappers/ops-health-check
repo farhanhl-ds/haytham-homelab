@@ -1,0 +1,61 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+# Audited Read-Only Wrapper — End-to-End Homelab Health Check
+# Callable by: homelab-agent (via NOPASSWD sudo as homelab-ops) or homelab-ops.
+# Runs ONLY fixed, non-mutating status checks across Zones 0-4.
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# shellcheck source=_ops-infisical-lib.sh
+source "${SCRIPT_DIR}/_ops-infisical-lib.sh"
+
+if [[ "$#" -ne 0 ]]; then
+  echo "[ERROR] ops-health-check accepts NO arguments." >&2
+  exit 2
+fi
+
+require_ops_user
+trap cleanup_ephemeral_resources EXIT INT TERM
+audit_log "ops-health-check" "start"
+
+start_ephemeral_ssh_agent
+
+SSH_OPTS=(-o BatchMode=yes -o ConnectTimeout=5 -o StrictHostKeyChecking=accept-new)
+
+echo "=== [Zone 1] CT 110 Infisical (192.168.100.10:8080) ==="
+curl -fsS --max-time 5 http://192.168.100.10:8080/api/status && echo "" || echo "[FAIL] Infisical unreachable"
+
+echo ""
+echo "=== [Zone 3] CT 130 Pi-hole DNS (192.168.100.30) ==="
+printf 'haytham.internal        -> %s\n' "$(dig +short +time=3 haytham.internal @192.168.100.30 || echo FAIL)"
+printf 'immich.haytham.internal -> %s\n' "$(dig +short +time=3 immich.haytham.internal @192.168.100.30 || echo FAIL)"
+
+echo ""
+echo "=== [Zone 3] CT 131 NPM (192.168.100.31) ==="
+ssh "${SSH_OPTS[@]}" root@192.168.100.31 "docker ps --format 'table {{.Names}}\t{{.Status}}'" || echo "[FAIL] CT 131 unreachable"
+
+echo ""
+echo "=== [Zone 3] CT 132 Tailscale (192.168.100.32) ==="
+ssh "${SSH_OPTS[@]}" root@192.168.100.32 "tailscale status --peers=false" || echo "[FAIL] CT 132 unreachable"
+
+echo ""
+echo "=== [Zone 2] CT 120 Vaultwarden (192.168.100.20) ==="
+ssh "${SSH_OPTS[@]}" root@192.168.100.20 "docker ps --format 'table {{.Names}}\t{{.Status}}'" || echo "[FAIL] CT 120 unreachable"
+
+echo ""
+echo "=== [Zone 2] CT 121 Immich + /dev/dri (192.168.100.21) ==="
+ssh "${SSH_OPTS[@]}" root@192.168.100.21 "ls -l /dev/dri && docker ps --format 'table {{.Names}}\t{{.Status}}'" || echo "[FAIL] CT 121 unreachable"
+
+echo ""
+echo "=== [Zone 4] CT 140 Homepage (192.168.100.40) ==="
+ssh "${SSH_OPTS[@]}" root@192.168.100.40 "docker ps --format 'table {{.Names}}\t{{.Status}}'" || echo "[FAIL] CT 140 unreachable"
+
+echo ""
+echo "=== [Zone 4] CT 141 Uptime Kuma (192.168.100.41) ==="
+ssh "${SSH_OPTS[@]}" root@192.168.100.41 "docker ps --format 'table {{.Names}}\t{{.Status}}'" || echo "[FAIL] CT 141 unreachable"
+
+echo ""
+echo "=== [Zone 0] Proxmox haytham Backup Timers & Restic Snapshots (192.168.100.2) ==="
+ssh "${SSH_OPTS[@]}" root@192.168.100.2 "systemctl list-timers 'homelab-*' --no-pager && restic -r /var/backups/homelab/restic --password-file /etc/homelab-backup/restic.pass snapshots --compact --last 5" || echo "[FAIL] Proxmox backup check failed"
+
+audit_log "ops-health-check" "ok"

@@ -1,80 +1,81 @@
 ---
 id: ops-secret-rotation
-title: Runbook — Secret Rotation
+title: Runbook — Secret Rotation (Zone 1 Infisical)
 tier: "x"
 ctid: "n/a"
 ip: n/a
 status: planned
 last_verified: unreleased
-tags: [operations, security, vault, rotation]
+tags: [operations, security, infisical, rotation]
 retrievable: true
 ---
 
-# Runbook — Secret Rotation
+# Runbook — Secret Rotation (Zone 1 Infisical)
 
 ## 1. Purpose
 
-Rotate the Ansible Vault master password and/or individual secrets. Covers the pgAdmin first-run exception.
+Rotate homelab application secrets, Proxmox/Terraform credentials, the `homelab-ops-ro` Infisical Machine Identity, or the revocable `devbox` SSH key without ever exposing plaintext values to `homelab-agent` or storing static `.vault_pass` files on disk (`ADR-008`).
 
-## 2. Hygiene rules (apply from day one)
+## 2. When to Use
 
-- Any secret exposed outside its intended store counts as compromised — regenerate, not just re-wrap.
-- Exclude `.vault_pass` from every archive: `zip -r project.zip . -x ".vault_pass"` (`.gitignore` does not protect `zip`).
-- Never paste generated values into chat or logs. Generate, encrypt, then `unset SECRET; history -c`.
+- Scheduled credential rotation or immediate regeneration after a suspected exposure/compromise.
+- Rebuilding `devbox` after a suspected prompt-injection incident.
 
-## 3. Rotate master password only (re-wrap same values)
+## 3. Prerequisites
 
-Because `group_vars/*.yml` uses **inline `!vault` strings** mixed with plaintext YAML (not whole-file encryption), `ansible-vault rekey` cannot be run directly on those files. To rotate the master vault password:
+- Zone 1 Infisical (`CT 110` @ `http://192.168.100.10:8080`) accessible from your Windows PC browser (Human Admin account + MFA).
+- Human operator access to `homelab-ops` on `devbox` (`sudo -iu homelab-ops`) and Windows Break-Glass SSH to `haytham` (`192.168.100.2`).
 
-```bash
-cd ansible
-cp .vault_pass .vault_pass.old
-openssl rand -base64 24 > .vault_pass.new && chmod 600 .vault_pass.new
+## 4. Steps
 
-# For each vault_* variable across group_vars/{proxmox,tier10,tier20,tier30,tier40,tier60}.yml:
-# 1. Read current plaintext with .vault_pass.old:
-#    ansible localhost -m debug -a "var=vault_pihole_webpassword" -e @group_vars/tier10.yml --vault-password-file .vault_pass.old
-# 2. Re-encrypt with .vault_pass.new:
-#    ansible-vault encrypt_string '<plaintext>' --name 'vault_pihole_webpassword' --vault-password-file .vault_pass.new
-# 3. Replace the !vault block in group_vars/<group>.yml.
-# 4. Once all blocks are replaced:
-mv .vault_pass.new .vault_pass && rm -f .vault_pass.old
-```
+### A. Rotate an Application or Terraform Secret
 
-No service restart is needed when only the vault master password changes (decrypted values are unchanged).
+1. Open **Infisical Web UI** (`http://192.168.100.10:8080` or `https://infisical.haytham.internal`) from your Windows PC.
+2. Navigate to Project `haytham-homelab` → Environment `prod` → target folder:
+   - `/terraform`: `TF_VAR_pve_api_token`, `TF_VAR_ct_root_password`
+   - `/proxmox`: `vault_restic_password`
+   - `/zone2`: `vault_vaultwarden_admin_token`, `vault_immich_db_password`
+   - `/zone3`: `vault_pihole_webpassword`, `vault_tailscale_authkey`
+3. Replace the secret value with a fresh random 32-character value and save (Infisical records full version history & audit log).
+4. Re-apply the owning Ansible playbook as human operator (`sudo -iu homelab-ops` on `devbox`):
+   ```bash
+   ops-ansible-apply zone3_infra.yml      # Pi-hole / Tailscale
+   ops-ansible-apply zone2_protected.yml  # Vaultwarden / Immich
+   ops-ansible-apply host_backups.yml     # Proxmox restic password
+   ```
 
-## 4. Regenerate individual secrets (new values)
+> **Special caution for `vault_restic_password` (`/proxmox`):** Before running `ops-ansible-apply host_backups.yml` against an *existing* `restic` repository, add the new key to the repo on `haytham` first (`restic -r /var/backups/homelab/restic --password-file /etc/homelab-backup/restic.pass key add`), verify unlock with the new key, then update Infisical + run `host_backups.yml`, and remove the old key (`restic key remove`). Update your offline emergency sheet immediately.
 
-```bash
-SECRET1=$(openssl rand -base64 32 | tr -dc 'a-zA-Z0-9' | head -c 32)
-ansible-vault encrypt_string "$SECRET1" --name 'vault_karakeep_nextauth_secret'
-# paste !vault block into group_vars/tier40.yml, replacing old block
-unset SECRET1; history -c
-```
+### B. Rotate `homelab-ops-ro` Machine Identity (After `devbox` Compromise)
 
-Then re-run the owning playbook:
+1. In Infisical UI → Access Control → Machine Identities → `homelab-ops-ro` → revoke the compromised Universal Auth Client Secret and create a new one.
+2. On `devbox` (`sudo -iu homelab-ops`), update `INFISICAL_CLIENT_SECRET` in `/var/lib/haytham-ops/infisical-ops.env` (`chmod 0600`).
+3. Refresh your encrypted off-host recovery bundle: `ops-bundle pack`.
 
-```bash
-ansible-playbook tier10.yml  # etc. per tier
-```
+### C. Rotate Proxmox API Token (`terraform@pve!terraform`)
 
-Cross-tier constraint: if an app ever consumes another tier's secret, both copies must share plaintext (generate once, encrypt twice under tier-scoped names). No such pairs exist in the initial build.
+1. From Windows Break-Glass SSH on `haytham` (`192.168.100.2`):
+   ```bash
+   pveum user token remove terraform@pve terraform
+   pveum user token add terraform@pve terraform --privsep 0
+   ```
+2. Store the new `terraform@pve!terraform=<uuid>` value in Infisical (`/terraform` → `TF_VAR_pve_api_token`) and test `ops-tf-plan`.
 
-## 5. Exceptions
+## 5. Verification
 
-- **pgAdmin login password:** `PGADMIN_DEFAULT_PASSWORD` applies on first run only. Vault change + re-run is ignored for existing accounts. Rotate via UI (User Management → Change Password) or wipe `./data` to replay first run.
-- **NPM admin:** not in Vault at all (SQLite in container). Change in NPM UI.
-- **Service self-registrations** (Vaultwarden master, Karakeep user): app-level accounts, rotated in-app, not via Vault.
-
-## 6. Verification
-
-- Read-back check (never `cat` vault files for values):
+- Validate read-only wrappers succeed with the rotated secret:
   ```bash
-  ansible localhost -m debug -a "var=vault_pgadmin_default_password" -e @group_vars/tier20.yml --vault-password-file .vault_pass
+  sudo -u homelab-ops /usr/local/libexec/haytham-ops/ops-tf-plan
+  sudo -u homelab-ops /usr/local/libexec/haytham-ops/ops-ansible-check zone3_infra.yml
+  sudo -u homelab-ops /usr/local/libexec/haytham-ops/ops-health-check
   ```
-- Login smoke per service (see each `services/*.md §5`).
+- Confirm login smoke per rotated service and inspect Infisical Audit Logs.
 
-## 7. FAQ
+## 6. Rollback
 
-**Q: Rekey or regenerate?**
-A: Rekey = same secrets, new master password (fast, `.vault_pass` exposure only). Regenerate = new secret values (required if a secret value itself was exposed).
+In Infisical UI, click the secret's **Version History** to revert to the previous value if an application fails to restart, then re-run `ops-ansible-apply <playbook>`.
+
+## 7. Manual Gaps
+
+- **Non-Infisical UI accounts** (NPM admin `.31`, Vaultwarden master `.20`, Immich admin `.21`, Uptime Kuma admin `.41`, deferred pgAdmin `.42`) are rotated inside each web UI.
+- **Infisical `ENCRYPTION_KEY` (`CT 110`):** Never modify after secrets exist; back up offline (`services/zone1-infisical-110.md §4`).

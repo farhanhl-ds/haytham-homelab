@@ -6,81 +6,60 @@ description: >-
   dependency-safe order.
 ---
 
-# Homelab Update & Dependency-Safe Reboot
+# Homelab Update & Dependency-Safe Reboot (Security Zones)
 
 Canonical runbook: `kb/operations/update-and-reboot.md`.
 
-## Active Phase 1 CTIDs
+## Active Phase 1 CTIDs (`ID = 100 + last_octet`)
 
-`110 120 130 320 440 610 910` *(update this list if Tier 20 or Karakeep are revived).*
+- **Zone 1 Immutable:** `110` (Infisical — patched separately via Windows Break-Glass SSH; rarely rebooted)
+- **Zones 2–4 Managed:** `120 121 130 131 132 140 141` *(add `122 123 133 142` when deferred services revive).*
 
 ## 1. Pre-Update Checklist
 
 1. Confirm no active bulk Immich uploads or heavy transcoding jobs.
-2. Trigger a fresh Track 1 backup on `haytham` before major patches:
+2. Human triggers a fresh Track 1 backup on `haytham` (`192.168.100.2`) from Windows Break-Glass SSH:
    ```bash
-   ssh -i ~/.ssh/id_ed25519 root@192.168.100.2 "systemctl start homelab-backup.service"
+   systemctl start homelab-backup.service
    ```
-3. For risky upgrades, take Proxmox snapshots of lightweight CTs (be mindful of free space before snapshotting 500 GB CT `610`):
+3. Optional Proxmox snapshots of lightweight CTs before major upgrades (skip 500 GB `CT 121` if SSD space is tight):
    ```bash
-   ssh -i ~/.ssh/id_ed25519 root@192.168.100.2 \
-     'for ctid in 110 120 130 320 440 910; do pct snapshot $ctid "pre-update-$(date +%Y%m%d)"; done'
+   for ctid in 110 120 130 131 132 140 141; do pct snapshot $ctid "pre-update-$(date +%Y%m%d)"; done
    ```
-4. If applying a `terraform/locals.tf` resize first, verify `terraform plan` shows `~` in-place (NOT `-/+` replace!), then run `terraform apply -parallelism=1` with `ssh-agent`.
+4. If applying a `terraform/locals.tf` CPU/RAM/swap/disk resize first:
+   - Agent verifies `sudo -u homelab-ops /usr/local/libexec/haytham-ops/ops-tf-plan` shows `~` in-place (NOT `-/+` replace!).
+   - Human applies via `sudo -iu homelab-ops && ops-tf-apply`.
 
-## 2. Patch All Containers (Do Not Interleave Reboots)
+## 2. Patch All Containers (Human on `haytham` `.2`)
 
 ```bash
-ssh -i ~/.ssh/id_ed25519 root@192.168.100.2 '
-  for ctid in 110 120 130 320 440 610 910; do
-    echo "=== Updating CT $ctid ==="
-    pct exec $ctid -- bash -c "DEBIAN_FRONTEND=noninteractive apt-get update && apt-get upgrade -y"
-  done
-'
+for ctid in 120 121 130 131 132 140 141; do
+  echo "=== Updating CT $ctid ==="
+  pct exec $ctid -- bash -c "DEBIAN_FRONTEND=noninteractive apt-get update && apt-get upgrade -y"
+done
 ```
 
-## 3. Dependency-Safe Reboot Order
+## 3. Dependency-Safe Reboot Order (Human on `haytham` `.2`)
 
-Always reboot depended-upon tiers first and **network/ingress (`110 120 130`) last** (prepend `210 220` then `230` if Tier 20 is active):
-1. **Identity:** `320` (Vaultwarden)
-2. **Media:** `610` (Immich)
-3. **App & Observability:** `440` (Homepage), `910` (Uptime Kuma)
-4. **Network / Ingress:** `110` (Pi-hole), `120` (NPM), `130` (Tailscale)
+Always reboot Zone 2 Protected Data → Zone 4 Apps & Ops → **Zone 3 Core Infra (`130 131 132`) LAST** (and leave Zone 1 `CT 110` running unless specifically patching it):
 
 ```bash
-ssh -i ~/.ssh/id_ed25519 root@192.168.100.2 '
-  set -e
-  reboot_group() {
-    local label="$1"; shift
-    for ctid in "$@"; do
-      echo ">> Rebooting CT $ctid ($label)..."
-      pct reboot "$ctid"
-      sleep 8
-    done
-    sleep 10
-  }
-  reboot_group "identity"    320
-  reboot_group "media"       610
-  reboot_group "app-and-obs" 440 910
-  reboot_group "network"     110 120 130
-'
+set -e
+reboot_group() {
+  local label="$1"; shift
+  for ctid in "$@"; do
+    echo ">> Rebooting CT $ctid ($label)..."
+    pct reboot "$ctid"
+    sleep 8
+  done
+  sleep 10
+}
+reboot_group "zone2-protected" 120 121
+reboot_group "zone4-apps-ops"  140 141
+reboot_group "zone3-infra"     130 131 132
 ```
 
 ## 4. Post-Reboot Verification & Rollback
 
-```bash
-ssh -i ~/.ssh/id_ed25519 root@192.168.100.2 '
-  pct list
-  echo "--- passthrough devices ---"
-  pct exec 130 -- ls -la /dev/net/tun
-  pct exec 610 -- ls -la /dev/dri
-  echo "--- docker containers ---"
-  for ctid in 120 320 440 610 910; do
-    echo "=== CT $ctid ==="
-    pct exec $ctid -- docker ps --format "table {{.Names}}\t{{.Status}}"
-  done
-'
-dig haytham.internal @192.168.100.11 +short
-```
-
-- **Rollback:** `pct rollback <ctid> pre-update-YYYYMMDD` (and clean up old snapshots once healthy so `local-lvm` stays lean).
+- Agent runs: `sudo -u homelab-ops /usr/local/libexec/haytham-ops/ops-health-check` (verifies Zone 1 Infisical `.10`, Pi-hole DNS `@.30`, Docker containers on `.20/.21/.31/.40/.41`, `/dev/dri` on `.21`, Tailscale on `.32`, and backup timers on `.2`).
+- **Rollback (Human on `haytham`):** `pct rollback <ctid> pre-update-YYYYMMDD` (clean up snapshots after verifying healthy).

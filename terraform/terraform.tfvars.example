@@ -1,7 +1,10 @@
-# Copy to terraform.tfvars and fill in real values.
-# terraform.tfvars is gitignored — never commit real secrets.
+# Copy to /var/lib/haytham-ops/terraform.tfvars (0600 homelab-ops:homelab-ops).
+# NEVER store secrets here or inside the Git working tree!
+#
+# `pve_api_token` and `ct_root_password` are injected at runtime into memory as
+# TF_VAR_* environment variables from Zone 1 Infisical (CT 110 @ 192.168.100.10)
+# by /usr/local/libexec/haytham-ops/ops-tf-{plan,apply}.
 
-pve_endpoint = "https://192.168.100.2:8006/"
-pve_api_token = "terraform@pve!terraform=<secret-uuid>"
-ssh_public_key_path = "C:/Users/<you>/.ssh/id_ed25519.pub"
-ct_root_password = "<generate with: openssl rand -base64 24>"
+pve_endpoint                   = "https://192.168.100.2:8006/"
+ssh_public_key_path            = "/var/lib/haytham-ops/.ssh/id_ed25519_control.pub"
+breakglass_ssh_public_key_path = "/var/lib/haytham-ops/.ssh/windows_breakglass.pub"

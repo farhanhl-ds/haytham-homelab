@@ -1,46 +1,24 @@
 ---
 id: adr-006-infisical-deferred
-title: ADR-006 — Infisical Deferred
+title: ADR-006 — Infisical Deferred (Superseded by ADR-008)
 tier: "x"
 ctid: "n/a"
 ip: n/a
-status: planned
+status: superseded
 last_verified: unreleased
-tags: [decision, infisical, secrets-manager]
+tags: [decision, infisical, secrets-manager, superseded]
 retrievable: true
 ---
 
-# ADR-006 — Infisical Deferred
+# ADR-006 — Infisical Deferred (Superseded by ADR-008)
 
-## Context
+> **Superseded by [ADR-008](ADR-008-zero-trust-security-zones-and-infisical.md).**
+> Self-hosted Infisical has been promoted out of the legacy Tier 30 (`CT 330`) slot into **Zone 1 Immutable Core (`CT 110` at `192.168.100.10`)**, provisioned out-of-band outside Terraform state and ACLs so it survives all Zone 2–4 rebuilds and eliminates static `.vault_pass` / `terraform.tfvars` secrets on the disposable control node (`devbox`).
 
-Tier 30 reserves CTID 330 (`192.168.100.33`) for a machine secrets manager (Infisical was the initial candidate). Infisical offers centralized secret rotation beyond Ansible Vault's per-value pattern. However, no app in the initial build requires it — Karakeep and Vaultwarden are SQLite-only, Postgres DB credentials live in `group_vars/tier20.yml`, and NPM admin is not in Vault.
+## Original Context (Historical)
 
-## Decision
-
-Do not build Infisical in the initial scope. Tier 30 is Vaultwarden only. CTID 330 / `.33` stays reserved.
-
-When a trigger appears (consumers beyond Ansible Vault, rotation pain), revive with:
-
-1. Add `infisical` block to `locals.tf` containers (CTID 330, `192.168.100.33`).
-2. `terraform apply`.
-3. Add `infisical` to `ansible/inventory/hosts.yml` tier30 group.
-4. Duplicate shared Tier 20 secret values under tier-scoped names in `group_vars/tier30.yml` (generate once, encrypt twice — plaintext identical).
-5. Write `roles/infisical` (reusing `roles/docker`).
-6. Add `tier30.yml` play entry or new playbook.
-7. Add NPM Proxy Host `infisical.haytham.internal → 192.168.100.33:80`.
-
-## Alternatives considered
-
-- Build Infisical now (rejected: no consumer, adds operational burden without benefit).
-- HashiCorp Vault (rejected: over-engineered for single-user homelab).
-
-## Consequences
-
-- No machine secrets manager in the initial build.
-- `postgres_databases: []` in `group_vars/tier20.yml` (no shared-PG consumers yet).
-- Revival path is documented here so a future trigger does not restart from zero.
+The initial pre-hardening blueprint deferred Infisical under legacy Tier 30 (`CTID 330`) because no application required runtime secrets beyond Ansible Vault. Once an AI agent was placed on the Linux control node, storing plaintext `.vault_pass` and static credentials on `devbox` became unacceptable, triggering promotion of lean-tuned Infisical to Zone 1 (`services/zone1-infisical-110.md`).
 
 ## Status
 
-Reserved. Trigger: concrete secrets-manager requirement beyond Ansible Vault.
+Superseded by `ADR-008`.

@@ -1,16 +1,16 @@
 ---
 id: svc-karakeep-420
-title: Karakeep — Tier 40 App (CTID 420)
+title: Karakeep — Tier 40 App (CTID 123)
 tier: "40"
-ctid: "420"
-ip: 192.168.100.42
+ctid: "123"
+ip: 192.168.100.23
 status: reserved
 last_verified: unreleased
 tags: [karakeep, bookmarks, tier40, docker, meilisearch]
 retrievable: true
 ---
 
-# Karakeep — Tier 40 App (CTID 420)
+# Karakeep — Tier 40 App (CTID 123)
 
 > **Status: Deferred (`enabled = false` in `terraform/locals.tf`)** pending post-Phase 1 evaluation (keep vs. lightweight alternative) or 16 GB RAM upgrade — see `../decisions/ADR-007-lean-8gb-phase1.md`.
 
@@ -22,7 +22,7 @@ Bookmark manager. Full chain proves DNS → proxy → SSL → app → search →
 
 | Field | Value |
 |---|---|
-| CTID / IP | 420 / `192.168.100.42` |
+| CTID / IP | 420 / `192.168.100.23` |
 | Resources | 2 cores / 4 GB RAM (headless Chrome is RAM-hungry; lower values OOM on crawl) / 24 GB disk |
 | Base | Docker, **3-container bundle in one LXC**: `karakeep:3000` + `meilisearch` (internal `:7700`) + `browserless` (internal websocket) |
 | DB | SQLite (upstream is SQLite-only; do not create a shared-Postgres DB for it) |
@@ -37,12 +37,12 @@ Bookmark manager. Full chain proves DNS → proxy → SSL → app → search →
 - Secrets (all inter-container, not user creds): `vault_karakeep_nextauth_secret`, `vault_karakeep_meili_master_key`, `vault_karakeep_browser_token` (each 32-char alphanumeric from `openssl rand -base64 32 | tr -dc A-Za-z0-9 | head -c 32`).
 - Permission pre-check (pgAdmin pattern): Karakeep app runs as **root** — safe to bind-mount without UID fix. For `meili_data`, if `Permission denied` appears, apply the pgAdmin `chown` pattern with the image UID.
 - User auth: self-registration in web UI on first run (no default, no preseed).
-- NPM: `karakeep.haytham.internal → 192.168.100.42:3000`, wildcard cert.
+- NPM: `karakeep.haytham.internal → 192.168.100.23:3000`, wildcard cert.
 
 ## 5. Verification
 
 ```bash
-ssh root@192.168.100.42 "docker ps"
+ssh root@192.168.100.23 "docker ps"
 # Expect: 3 Up, karakeep healthy
 ```
 

@@ -1,0 +1,20 @@
+---
+# Zone 4 · Ephemeral Apps & Ops (CT 140 Homepage, CT 141 Uptime Kuma)
+- name: Homepage (CT 140)
+  hosts: homepage
+  become: true
+  roles:
+    - homepage
+
+- name: Uptime Kuma (CT 141)
+  hosts: uptime_kuma
+  become: true
+  roles:
+    - uptime_kuma
+
+# Deferred Zone 4 admin tool (uncomment when Postgres CT 122 is enabled):
+# - name: pgAdmin (CT 142)
+#   hosts: pgadmin
+#   become: true
+#   roles:
+#     - pgadmin

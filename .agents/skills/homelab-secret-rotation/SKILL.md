@@ -1,50 +1,44 @@
 ---
 name: homelab-secret-rotation
 description: >-
-  Use this skill when the user asks to rotate Ansible Vault secrets, rekey
-  .vault_pass, or bootstrap encrypted CHANGEME secrets in ansible/group_vars/.
+  Use this skill when the user asks to rotate homelab secrets in Zone 1 Infisical
+  (CT 110), rotate the homelab-ops-ro Machine Identity, or rotate Proxmox/SSH credentials.
 ---
 
-# Homelab Secret Rotation & Vault Bootstrap
+# Homelab Secret Rotation (Zone 1 Infisical — Zero Static Vault)
 
-Canonical runbook: `kb/operations/secret-rotation.md`.
+Canonical runbooks: `kb/operations/secret-rotation.md` and `kb/services/zone1-infisical-110.md`.
 
 ## Security Hygiene (Non-Negotiable)
 
-- **Never print, echo, or paste plaintext secrets** into chat, tool output, or commit messages.
-- **User-generated secrets:** When generating a new secret that must stay private (especially `vault_restic_password` or `.vault_pass`), give the user the exact shell command to run in their own terminal so plaintext never enters the agent transcript, and remind them to run `unset SECRET; history -c`.
-- **Compromised secret = regenerate**, not just rekey. Rekeying only changes the `.vault_pass` wrapper around the same plaintext values.
+- **Zero plaintext secrets in agent context:** `homelab-agent` has **zero** Infisical credentials and cannot read `/var/lib/haytham-ops/`. Never ask the user to paste plaintext secrets into chat.
+- **Human-only rotation:** All secret creation and rotation happens inside the **Zone 1 Infisical Web UI** (`http://192.168.100.10:8080` or `https://infisical.haytham.internal`) from the Windows PC (with MFA & audit log). `homelab-ops-ro` is strictly read-only.
+- **Compromised secret = regenerate immediately.**
 
-## Workflow A — Bootstrap or Rotate an Individual `vault_*` Secret
+## Workflow A — Rotate an Application or Terraform Secret
 
-1. Generate and encrypt inline in `ansible/` (never whole-file encrypt `group_vars/*.yml`):
+1. **Human (Windows browser → Infisical UI `haytham-homelab` / `prod`):**
+   - `/terraform`: `TF_VAR_pve_api_token`, `TF_VAR_ct_root_password`
+   - `/proxmox`: `vault_restic_password`
+   - `/zone2`: `vault_vaultwarden_admin_token`, `vault_immich_db_password`
+   - `/zone3`: `vault_pihole_webpassword`, `vault_tailscale_authkey`
+   - Update the secret value in Infisical UI (previous version is retained in Infisical audit history).
+2. **Human (`sudo -iu homelab-ops` on `devbox`):** Re-run the owning Ansible playbook so the service picks up the rotated value:
    ```bash
-   cd /home/farhan/haytham-homelab/ansible
-   SECRET=$(openssl rand -base64 32 | tr -dc 'a-zA-Z0-9' | head -c 32)
-   ansible-vault encrypt_string "$SECRET" --name 'vault_<var_name>'
-   unset SECRET; history -c
+   ops-ansible-apply zone3_infra.yml     # for /zone3 secrets
+   ops-ansible-apply zone2_protected.yml # for /zone2 secrets
+   ops-ansible-apply host_backups.yml    # for /proxmox secrets
    ```
-2. Paste the resulting `!vault |` block into the target `ansible/group_vars/<group>.yml`.
-3. Re-run the owning tier playbook (`ansible-playbook tier<N>.yml`) so the service picks up the new value.
-4. **Special caution for `vault_restic_password` (`proxmox.yml`):** Changing the password on an *existing* `restic` repo requires `restic key add` / `restic key remove` on `haytham` before updating `/etc/homelab-backup/restic.pass`, otherwise backups fail to unlock the repo. Record the new password offline immediately.
+3. **Special caution for `vault_restic_password` (`/proxmox`):** Changing the password on an *existing* `restic` repo requires running `restic key add` / `restic key remove` on `haytham` BEFORE running `ops-ansible-apply host_backups.yml`, otherwise backups fail to unlock the repo. Update your offline emergency sheet immediately.
 
-## Workflow B — Rotate Master Vault Password (`.vault_pass` Rekey)
+## Workflow B — Rotate `homelab-ops-ro` Machine Identity or Control-Node SSH Key
 
-Because `group_vars/*.yml` mixes plaintext YAML with inline `!vault` strings, `ansible-vault rekey` does **not** work directly. Follow `kb/operations/secret-rotation.md §3`:
-1. Copy `.vault_pass` → `.vault_pass.old` and generate `.vault_pass.new` (`chmod 600`).
-2. For every `vault_*` block across `group_vars/{proxmox,tier10,tier20,tier30,tier40,tier60}.yml`, decrypt with `.vault_pass.old`, re-encrypt with `ansible-vault encrypt_string --vault-password-file .vault_pass.new`, and replace the block.
-3. Swap `mv .vault_pass.new .vault_pass && rm -f .vault_pass.old`. No service restart needed.
+Required after any suspected `devbox` compromise:
+1. In Infisical UI → Access Control → Machine Identities → `homelab-ops-ro` → revoke old Universal Auth Client Secret and issue a new one.
+2. Update `/var/lib/haytham-ops/infisical-ops.env` (`0600 homelab-ops`) and re-pack recovery bundle (`ops-bundle pack`).
+3. To rotate `id_ed25519_control`, regenerate in `/var/lib/haytham-ops/.ssh/`, authorize the new `.pub` key on `haytham` (`.2`) and active LXCs (never `CT 110`), and delete the old key from `/root/.ssh/authorized_keys` via Windows Break-Glass SSH.
 
-## Non-Vault Exceptions (Do Not Look in Ansible Vault)
+## Non-Infisical Exceptions (UI Accounts)
 
-- **NPM admin, Vaultwarden master, Immich admin, Uptime Kuma admin:** App-level accounts in SQLite/Postgres — rotate inside each web UI.
-- **pgAdmin (`230`, deferred):** `PGADMIN_DEFAULT_PASSWORD` applies on first run only — rotate in UI.
-
-## Verification
-
-- Validate YAML + Vault decryption without printing secrets:
-  ```bash
-  cd /home/farhan/haytham-homelab/ansible
-  ansible-inventory --list >/dev/null && echo "Vault & inventory OK"
-  ```
-- Re-run the affected tier playbook with `--check` or apply cleanly and confirm `failed=0` and healthy service login.
+- **NPM admin (`131`), Vaultwarden master (`120`), Immich admin (`121`), Uptime Kuma admin (`141`), pgAdmin (`142`, deferred):** App-level accounts rotated inside each web UI.
+- **Infisical `ENCRYPTION_KEY` (`CT 110`):** NEVER change after storing secrets (breaks DB decryption).

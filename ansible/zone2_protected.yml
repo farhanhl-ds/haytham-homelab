@@ -1,0 +1,26 @@
+---
+# Zone 2 · Protected Data / Stateful P0 (CT 120 Vaultwarden, CT 121 Immich)
+- name: Vaultwarden (CT 120)
+  hosts: vaultwarden
+  become: true
+  roles:
+    - vaultwarden
+
+- name: Immich (CT 121)
+  hosts: immich
+  become: true
+  roles:
+    - immich
+
+# Deferred Zone 2 stateful services (uncomment when enabled in terraform/locals.tf & inventory/hosts.yml):
+# - name: Postgres (CT 122)
+#   hosts: postgres
+#   become: true
+#   roles:
+#     - postgres
+#
+# - name: Karakeep (CT 123)
+#   hosts: karakeep
+#   become: true
+#   roles:
+#     - karakeep

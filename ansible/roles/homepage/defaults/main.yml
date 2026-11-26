@@ -1,8 +1,8 @@
 ---
-# Homepage defaults — root dashboard at https://haytham.internal.
-# kb/services/app-homepage-440.md
+# Homepage defaults — root dashboard at https://haytham.internal (Zone 4 CT 140 @ 192.168.100.40).
+# kb/services/zone4-homepage-140.md
 homepage_data_dir: /opt/homepage
 homepage_version: v2.8.0
 homepage_image: "ghcr.io/gethomepage/homepage:{{ homepage_version }}"
 homepage_port: 3000
-homepage_allowed_hosts: "{{ homelab_domain }},192.168.100.44:{{ homepage_port }}"
+homepage_allowed_hosts: "{{ homelab_domain }},192.168.100.40:{{ homepage_port }}"

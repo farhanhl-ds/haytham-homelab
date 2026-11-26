@@ -1,0 +1,26 @@
+---
+# Zone 3 · Core Infra / Network (CT 130 Pi-hole, CT 131 NPM, CT 132 Tailscale)
+- name: Pi-hole (CT 130)
+  hosts: pihole
+  become: true
+  roles:
+    - pihole
+
+- name: NPM (CT 131)
+  hosts: npm
+  become: true
+  roles:
+    - npm
+
+- name: Tailscale (CT 132)
+  hosts: tailscale
+  become: true
+  roles:
+    - tailscale
+
+# Deferred Zone 3 cache (uncomment when enabled in terraform/locals.tf & inventory/hosts.yml):
+# - name: Redis (CT 133)
+#   hosts: redis
+#   become: true
+#   roles:
+#     - redis

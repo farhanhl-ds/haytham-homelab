@@ -1,0 +1,72 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+# Audited Read-Only Wrapper — Ansible Dry-Run (--check --diff)
+# Callable by: homelab-agent (via NOPASSWD sudo as homelab-ops) or homelab-ops.
+# Strictly validates the single playbook argument against an explicit allowlist.
+
+validate_playbook_arg() {
+  local pb="$1"
+  case "${pb}" in
+    host_devices.yml|host_backups.yml|zone2_protected.yml|zone3_infra.yml|zone4_apps.yml)
+      return 0
+      ;;
+    *)
+      echo "[ERROR] Disallowed or invalid playbook '${pb}'." >&2
+      echo "        Allowed: host_devices.yml, host_backups.yml, zone2_protected.yml, zone3_infra.yml, zone4_apps.yml" >&2
+      return 2
+      ;;
+  esac
+}
+
+# Offline unit-test hook for Stage 1 automated validation (exits before host ops)
+if [[ "${1:-}" == "--validate-only" ]]; then
+  if [[ "$#" -ne 2 ]]; then
+    echo "[ERROR] Expected exactly 1 playbook argument." >&2
+    exit 2
+  fi
+  validate_playbook_arg "$2"
+  exit $?
+fi
+
+if [[ "$#" -ne 1 ]]; then
+  echo "Usage: ops-ansible-check <host_devices.yml|host_backups.yml|zone2_protected.yml|zone3_infra.yml|zone4_apps.yml>" >&2
+  exit 2
+fi
+
+PLAYBOOK="$1"
+validate_playbook_arg "${PLAYBOOK}"
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# shellcheck source=_ops-infisical-lib.sh
+source "${SCRIPT_DIR}/_ops-infisical-lib.sh"
+
+require_ops_user
+trap cleanup_ephemeral_resources EXIT INT TERM
+audit_log "ops-ansible-check" "${PLAYBOOK}"
+
+INF_PATHS=()
+case "${PLAYBOOK}" in
+  host_devices.yml)    INF_PATHS=() ;;
+  host_backups.yml)    INF_PATHS=("/proxmox") ;;
+  zone2_protected.yml) INF_PATHS=("/zone2") ;;
+  zone3_infra.yml)     INF_PATHS=("/zone3") ;;
+  zone4_apps.yml)      INF_PATHS=("/zone4") ;;
+esac
+
+start_ephemeral_ssh_agent
+
+EXTRA_ARGS=()
+if [[ "${#INF_PATHS[@]}" -gt 0 ]]; then
+  infisical_export_ansible_shm "${INF_PATHS[@]}"
+  EXTRA_ARGS+=("-e" "@${OPS_SHM_SECRETS_FILE}")
+fi
+
+cd "${OPS_REPO_DIR}/ansible"
+ansible-playbook \
+  --check \
+  --diff \
+  "${EXTRA_ARGS[@]}" \
+  "${PLAYBOOK}"
+
+audit_log "ops-ansible-check" "ok:${PLAYBOOK}"

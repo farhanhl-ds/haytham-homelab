@@ -1,0 +1,15 @@
+---
+# Zone 3 · Core Infra / Network (CT 130 Pi-hole, CT 131 NPM, CT 132 Tailscale; deferred 133 Redis).
+# Secrets are injected at runtime into RAM (/dev/shm) from Zone 1 Infisical path `/zone3`
+# by ops-ansible-{check,apply}. Never commit real secrets here.
+
+pihole_domain: pihole.haytham.internal
+npm_domain: npm.haytham.internal
+npm_ip: 192.168.100.31
+tailscale_advertise_routes: "192.168.100.0/24"
+
+# Runtime secrets injected from Zone 1 Infisical (/zone3):
+# Leave vault_tailscale_authkey as CHANGEME in Infisical to authenticate interactively on CT 132.
+vault_pihole_webpassword: CHANGEME
+vault_tailscale_authkey: CHANGEME
+vault_redis_password: CHANGEME

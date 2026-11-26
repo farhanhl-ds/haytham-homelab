@@ -1,0 +1,59 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+# Human-Only Mutating Wrapper — Terraform Apply (-parallelism=1)
+# NEVER granted to homelab-agent in sudoers. Requires interactive human TTY.
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# shellcheck source=_ops-infisical-lib.sh
+source "${SCRIPT_DIR}/_ops-infisical-lib.sh"
+
+if [[ "$#" -ne 0 ]]; then
+  echo "[ERROR] ops-tf-apply accepts NO arguments." >&2
+  exit 2
+fi
+
+require_human_tty
+trap cleanup_ephemeral_resources EXIT INT TERM
+audit_log "ops-tf-apply" "prompt"
+
+TF_DIR="${OPS_REPO_DIR}/terraform"
+TF_VARS="${OPS_STATE_DIR}/terraform.tfvars"
+TF_STATE="${OPS_STATE_DIR}/terraform.tfstate"
+
+if [[ ! -f "${TF_VARS}" ]]; then
+  echo "[ERROR] Missing non-secret ${TF_VARS}." >&2
+  exit 1
+fi
+
+infisical_export_terraform_env
+start_ephemeral_ssh_agent
+
+echo "[INFO] Generating fresh plan before apply..."
+TMP_PLAN="${OPS_STATE_DIR}/plans/apply-$(date -u +%Y%m%d-%H%M%S).tfplan"
+/usr/local/bin/terraform -chdir="${TF_DIR}" plan \
+  -input=false \
+  -var-file="${TF_VARS}" \
+  -state="${TF_STATE}" \
+  -out="${TMP_PLAN}"
+
+echo ""
+read -r -p "Review the plan above. Type 'APPLY' to execute (parallelism=1): " confirm
+if [[ "${confirm}" != "APPLY" ]]; then
+  rm -f "${TMP_PLAN}"
+  audit_log "ops-tf-apply" "aborted"
+  echo "[ABORTED] No changes applied."
+  exit 1
+fi
+
+audit_log "ops-tf-apply" "executing"
+/usr/local/bin/terraform -chdir="${TF_DIR}" apply \
+  -parallelism=1 \
+  -state="${TF_STATE}" \
+  "${TMP_PLAN}"
+rm -f "${TMP_PLAN}"
+
+audit_log "ops-tf-apply" "ok"
+echo ""
+echo "[REMINDER] Refresh your encrypted off-host control bundle if state changed:"
+echo "           ops-bundle pack"

@@ -1,16 +1,16 @@
 ---
 id: svc-redis-220
-title: Redis — Tier 20 Data (CTID 220)
+title: Redis — Tier 20 Data (CTID 133)
 tier: "20"
-ctid: "220"
-ip: 192.168.100.22
+ctid: "133"
+ip: 192.168.100.33
 status: reserved
 last_verified: unreleased
 tags: [redis, cache, tier20, data]
 retrievable: true
 ---
 
-# Redis — Tier 20 Data (CTID 220)
+# Redis — Tier 20 Data (CTID 133)
 
 > **Status: Deferred (`enabled = false` in `terraform/locals.tf`)** until an active app requires shared Redis or after the 16 GB RAM upgrade — see `../decisions/ADR-007-lean-8gb-phase1.md`.
 
@@ -22,7 +22,7 @@ Shared cache/queue for apps with documented bring-your-own Redis support. No con
 
 | Field | Value |
 |---|---|
-| CTID / IP | 220 / `192.168.100.22` |
+| CTID / IP | 220 / `192.168.100.33` |
 | Resources | 1 core / 256 MB / 4 GB (raised from 128 MB: same `apt` OOM class as Pi-hole — the package cache update needs headroom even though `redis-server` steady-state is small) |
 | Base | Ubuntu 24.04 native `redis-server` |
 
@@ -39,7 +39,7 @@ Shared cache/queue for apps with documented bring-your-own Redis support. No con
 ## 5. Verification
 
 ```bash
-redis-cli -h 192.168.100.22 -a '<password>' ping
+redis-cli -h 192.168.100.33 -a '<password>' ping
 # Expect: PONG
 ```
 

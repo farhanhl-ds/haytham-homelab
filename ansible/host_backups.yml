@@ -1,0 +1,8 @@
+---
+# Zone 0 Host Backups (Proxmox `haytham` @ 192.168.100.2)
+# Track 1 daily encrypted restic (incl. Zone 1 CT 110 Infisical) + weekly vzdump timers.
+- name: Configure Proxmox host automated backups
+  hosts: proxmox
+  become: true
+  roles:
+    - backup

@@ -1,16 +1,16 @@
 ---
 id: svc-pihole-110
-title: Pi-hole — Tier 10 Network (CTID 110)
+title: Pi-hole — Tier 10 Network (CTID 130)
 tier: "10"
-ctid: "110"
-ip: 192.168.100.11
+ctid: "130"
+ip: 192.168.100.30
 status: planned
 last_verified: unreleased
 tags: [pihole, dns, tier10, network]
 retrievable: true
 ---
 
-# Pi-hole — Tier 10 Network (CTID 110)
+# Pi-hole — Tier 10 Network (CTID 130)
 
 ## 1. Purpose
 
@@ -20,7 +20,7 @@ LAN DNS + adblock and authoritative resolver for `*.haytham.internal` (wildcard 
 
 | Field | Value |
 |---|---|
-| CTID / IP | 110 / `192.168.100.11` (see `../reference/ip-ctid-matrix.md`) |
+| CTID / IP | 110 / `192.168.100.30` (see `../reference/ip-ctid-matrix.md`) |
 | Resources | 1 core / 512 MB / 4 GB (`apt` + Pi-hole FTL OOM-killed at 128 MB on Ubuntu 24.04 — 512 MB is the floor) |
 | Base | Ubuntu 24.04 LXC, native install (not Docker) |
 | Upstream | `https://install.pi-hole.net` (official unattended installer) |
@@ -40,18 +40,18 @@ Anticipate these Pi-hole v6 requirements in the role (do not treat as post-insta
 - Wildcard template `wildcard-haytham.conf.j2` → `/etc/dnsmasq.d/99-wildcard-haytham.conf`:
   ```
   server=/haytham.internal/#
-  address=/.haytham.internal/192.168.100.12
+  address=/.haytham.internal/192.168.100.31
   ```
 - Enable `pihole-FTL --config misc.etc_dnsmasq_d true` + restart handler (v6 ignores that directory by default). The web UI Local DNS page cannot create wildcards.
 
 ## 5. Verification
 
 ```bash
-dig karakeep.haytham.internal @192.168.100.11 +short
-# Expect: 192.168.100.12
+dig karakeep.haytham.internal @192.168.100.30 +short
+# Expect: 192.168.100.31
 
-dig karakeep.haytham.internal @192.168.100.11
-# Expect ANSWER SECTION: karakeep.haytham.internal. 0 IN A 192.168.100.12
+dig karakeep.haytham.internal @192.168.100.30
+# Expect ANSWER SECTION: karakeep.haytham.internal. 0 IN A 192.168.100.31
 ```
 
 Dashboard shows tens of thousands of gravity domains (count varies by list version; zero/error = run `pihole -g`).
@@ -64,7 +64,7 @@ Dashboard shows tens of thousands of gravity domains (count varies by list versi
 ## 7. FAQ
 
 **Q: What is Pi-hole's IP and URL?**
-A: `192.168.100.11`, `https://pihole.haytham.internal` (via NPM, redirects `/` → `/admin`).
+A: `192.168.100.30`, `https://pihole.haytham.internal` (via NPM, redirects `/` → `/admin`).
 
 **Q: SSH warns "host identification changed" after rebuild?**
-A: Expected — new OS = new host keys. `ssh-keygen -f ~/.ssh/known_hosts -R '192.168.100.11'`.
+A: Expected — new OS = new host keys. `ssh-keygen -f ~/.ssh/known_hosts -R '192.168.100.30'`.

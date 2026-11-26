@@ -30,7 +30,7 @@ This KB is designed for dual use: human operators and RAG/chatbot ingestion.
 ## File naming
 
 - `architecture/<topic>.md` — kebab-case topic.
-- `services/<tier>-<name>-<ctid>.md`, e.g. `data-postgres-210.md`. VM: `vm-haos-100.md`.
+- `services/<tier>-<name>-<ctid>.md`, e.g. `zone2-postgres-122.md`. VM: `vm-haos-103.md`.
 - `decisions/ADR-<nnn>-<slug>.md` — zero-padded, sequential.
 - `troubleshooting/<slug>.md` — requirement-oriented slug (not migration/incident).
 

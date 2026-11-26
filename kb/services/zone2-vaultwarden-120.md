@@ -1,16 +1,16 @@
 ---
 id: svc-vaultwarden-320
-title: Vaultwarden — Tier 30 Identity (CTID 320)
+title: Vaultwarden — Tier 30 Identity (CTID 120)
 tier: "30"
-ctid: "320"
-ip: 192.168.100.32
+ctid: "120"
+ip: 192.168.100.20
 status: planned
 last_verified: unreleased
 tags: [vaultwarden, passwords, tier30, docker, identity]
 retrievable: true
 ---
 
-# Vaultwarden — Tier 30 Identity (CTID 320)
+# Vaultwarden — Tier 30 Identity (CTID 120)
 
 ## 1. Purpose
 
@@ -20,7 +20,7 @@ Password manager (lightweight Bitwarden-compatible). Designated home for the SSL
 
 | Field | Value |
 |---|---|
-| CTID / IP | 320 / `192.168.100.32` |
+| CTID / IP | 320 / `192.168.100.20` |
 | Resources | 1 core / 256 MB / 8 GB |
 | Base | Docker `vaultwarden/server` |
 | DB | SQLite (single-user simplicity; no shared-Postgres dependency by design) |
@@ -33,13 +33,13 @@ Password manager (lightweight Bitwarden-compatible). Designated home for the SSL
 ## 4. Configuration
 
 - `SIGNUPS_ALLOWED=false` after the first account (no open signup for single-user).
-- NPM: `vaultwarden.haytham.internal → 192.168.100.32:80`, wildcard cert, **Websockets Support ON** (live sync).
+- NPM: `vaultwarden.haytham.internal → 192.168.100.20:80`, wildcard cert, **Websockets Support ON** (live sync).
 - Flow per build: set signups `true` → create master account → set `false` → re-run playbook. Data is ephemeral, so the account is recreated per rebuild until backups exist.
 
 ## 5. Verification
 
 ```bash
-ssh root@192.168.100.32 "docker ps"
+ssh root@192.168.100.20 "docker ps"
 # Expect: vaultwarden Up
 ```
 

@@ -1,8 +1,8 @@
 ---
 id: svc-haos-100
-title: Home Assistant OS — VM 100 (manual)
+title: Home Assistant OS — VM 103 (manual)
 tier: "vm"
-ctid: "100"
+ctid: "103"
 ip: 192.168.100.3
 status: reserved
 last_verified: unreleased
@@ -10,7 +10,7 @@ tags: [haos, vm, home-assistant, qm]
 retrievable: true
 ---
 
-# Home Assistant OS — VM 100 (manual)
+# Home Assistant OS — VM 103 (manual)
 
 > **Status: Deferred** until the 16 GB RAM upgrade so static KVM memory does not contend with Immich on 8 GB RAM — see `../decisions/ADR-007-lean-8gb-phase1.md`.
 
@@ -32,9 +32,9 @@ Home automation OS. Full OS image (`qcow2`), not `apt`/`compose` — hence VM (c
 The BIOS/machine/storage trio + EFI disk are required — defaults produce an unbootable VM (see `../troubleshooting/haos-boot-requirements.md`):
 
 ```bash
-qm stop 100; qm destroy 100  # only if rebuilding
+qm stop 103; qm destroy 103  # only if rebuilding
 
-qm create 100 \
+qm create 103 \
   --name haos \
   --memory 4096 \
   --cores 2 \
@@ -50,23 +50,23 @@ qm create 100 \
 qm importdisk 100 haos_ova-*.qcow2 local-lvm
 # GUI: Hardware → Unused Disk 0 → Edit → Discard → Add
 # GUI: Options → Boot Order → scsi0 top, checked, others unchecked
-qm start 100
+qm start 103
 ```
 
 Boot takes 2–5 min first time. Console shows `System is ready` with a `ha >` prompt.
 
 ## 4. Networking
 
-Router reservation (**DHCP Static IP** menu: MAC → `192.168.100.3`) — centralized, survives OS resets. Do not set static IP inside HAOS. Verify: `qm config 100 | grep net0` MAC matches reservation; `qm status 100` → running.
+Router reservation (**DHCP Static IP** menu: MAC → `192.168.100.3`) — centralized, survives OS resets. Do not set static IP inside HAOS. Verify: `qm config 103 | grep net0` MAC matches reservation; `qm status 103` → running.
 
 Access: `http://192.168.100.3:8123` (no NPM Proxy Host). Onboarding wizard creates admin/location on first boot.
 
 ## 5. Verification
 
 ```bash
-qm status 100
+qm status 103
 # Expect: status: running
-qm config 100 | grep -E "bios|machine|scsihw|net0"
+qm config 103 | grep -E "bios|machine|scsihw|net0"
 # Expect: ovmf, q35, virtio-scsi-pci, pinned MAC
 ```
 

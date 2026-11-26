@@ -1,6 +1,7 @@
 ---
-# Pi-hole defaults. Secrets come from group_vars/tier10.yml (vault_*).
-# kb/services/network-pihole-110.md
+# Pi-hole defaults (Zone 3 CT 130 @ 192.168.100.30).
+# Secret `vault_pihole_webpassword` injected at runtime from Zone 1 Infisical (/zone3).
+# kb/services/zone3-pihole-130.md
 pihole_interface: veth0
 pihole_upstream_dns_1: 1.1.1.1
 pihole_upstream_dns_2: 1.0.0.1

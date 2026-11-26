@@ -2,6 +2,8 @@ resource "proxmox_virtual_environment_container" "this" {
   description   = var.description
   node_name     = var.node_name
   vm_id         = var.vm_id
+  pool_id       = var.pool_id
+  protection    = var.protection
   unprivileged  = var.unprivileged
   start_on_boot = var.start_on_boot
   started       = true

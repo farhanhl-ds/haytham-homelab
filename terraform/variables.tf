@@ -4,18 +4,24 @@ variable "pve_endpoint" {
 }
 
 variable "pve_api_token" {
-  description = "Format: terraform@pve!terraform=<secret-uuid>"
+  description = "Format: terraform@pve!terraform=<secret-uuid>. Injected at runtime via TF_VAR_pve_api_token from Zone 1 Infisical (CT 110)."
   type        = string
   sensitive   = true
 }
 
 variable "ssh_public_key_path" {
-  description = "Absolute path to public key baked into every LXC (file() does not expand ~), e.g.: C:/Users/<you>/.ssh/id_ed25519.pub"
+  description = "Absolute path to revocable Control Node public key baked into every LXC (file() does not expand ~), e.g.: /var/lib/haytham-ops/.ssh/id_ed25519_control.pub"
   type        = string
 }
 
+variable "breakglass_ssh_public_key_path" {
+  description = "Optional absolute path to Windows-only Break-Glass & Backup-Pull public key (survives control node key revocation), e.g.: /var/lib/haytham-ops/.ssh/windows_breakglass.pub"
+  type        = string
+  default     = ""
+}
+
 variable "ct_root_password" {
-  description = "Root password for all containers (fallback access via Proxmox console if SSH fails). Generate with: openssl rand -base64 24"
+  description = "Root password for Terraform-managed containers (fallback via Proxmox console). Injected at runtime via TF_VAR_ct_root_password from Zone 1 Infisical (CT 110)."
   type        = string
   sensitive   = true
 }

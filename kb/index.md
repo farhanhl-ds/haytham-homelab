@@ -12,61 +12,35 @@ retrievable: true
 
 # Haytham Homelab Knowledge Base
 
-> Single source of truth for the `haytham` homelab. Written before the first build — all pages are prescriptive. English only. Git + Markdown, RAG-ready.
+> Single source of truth for the `haytham` homelab. English only. Git + Markdown, RAG-ready.
 
-## How to use this KB
+## How to Use This KB
 
-1. **Humans:** start here → `architecture/overview.md` → `roadmap/build-sequence.md` → the service page you need.
-2. **AI / RAG:** ingest all `*.md` under `kb/` where frontmatter `retrievable: true`. Exclude `templates/` and `eval/`. Use frontmatter fields (`tier`, `ctid`, `status`, `tags`) for metadata-filtered retrieval.
-3. **Status semantics:**
-   - `planned` — specified, not yet verified on this host.
-   - `verified` — passes its verification block on a clean build (flip after green build).
-   - `reserved` — specified in `roadmap/future-services.md`, not built.
-   - `deprecated` — superseded, do not use for new work.
+1. **Humans:** start here → `decisions/ADR-008-zero-trust-security-zones-and-infisical.md` → `operations/control-node-hardening-and-recovery.md` → `operations/build-from-scratch.md`.
+2. **AI / RAG:** ingest all `*.md` under `kb/` where frontmatter `retrievable: true`. Exclude `templates/` and `eval/`.
+3. **Status semantics:** `planned` (prescriptive, awaiting verification), `verified` (green clean build), `reserved` (deferred), `superseded` (do not use for new work).
 
-## Scope
+## Scope (Security Zones — `ID = 100 + last_octet`, `ADR-008`)
 
-| Area | Entry point |
+| Area | Entry Point |
 |---|---|
-| Architecture | `architecture/overview.md` |
-| Lean 8 GB Scope (ADR-007) | `decisions/ADR-007-lean-8gb-phase1.md` |
-| Tier 10 Network (Pi-hole 110, NPM 120, Tailscale 130) | `services/network-pihole-110.md`, `services/network-npm-120.md`, `services/network-tailscale-130.md` |
-| Tier 30 Identity (Vaultwarden 320) | `services/identity-vaultwarden-320.md` |
-| Tier 40 App (Homepage 440; Karakeep 420 deferred) | `services/app-homepage-440.md` |
-| Tier 60 Media (Immich 610) | `services/media-immich-610.md` |
-| Tier 80 Backup (Host `restic` + off-host SSH pull) | `operations/backup-and-restore.md` |
-| Tier 90 Observability (Uptime Kuma 910) | `services/obs-uptime-kuma-910.md` |
-| Deferred (Tier 20 Data 210/220/230, Karakeep 420, VM 100 HAOS) | `services/data-postgres-210.md`, `services/app-karakeep-420.md`, `services/vm-haos-100.md` |
-| Build order | `roadmap/build-sequence.md` |
-| Deferred & future services | `roadmap/future-services.md` |
+| Zero-Trust Control Node & Security Zones (`ADR-008`) | `decisions/ADR-008-zero-trust-security-zones-and-infisical.md` |
+| Control Node Hardening & <10m Recovery | `operations/control-node-hardening-and-recovery.md` |
+| Lean 8 GB Scope (`ADR-007`) | `decisions/ADR-007-lean-8gb-phase1.md` |
+| Canonical IP & ID Matrix | `reference/ip-ctid-matrix.md` |
+| Zone 1 Immutable Core (Infisical `110`) | `services/zone1-infisical-110.md` |
+| Zone 2 Protected Data (Vaultwarden `120`, Immich `121`) | `services/zone2-vaultwarden-120.md`, `services/zone2-immich-121.md` |
+| Zone 3 Core Infra (Pi-hole `130`, NPM `131`, Tailscale `132`) | `services/zone3-pihole-130.md`, `services/zone3-npm-131.md`, `services/zone3-tailscale-132.md` |
+| Zone 4 Ephemeral Apps & Ops (Homepage `140`, Uptime Kuma `141`) | `services/zone4-homepage-140.md`, `services/zone4-uptime-kuma-141.md` |
+| Zone 0 Host Backups (`restic` + `vzdump` + Windows pull) | `operations/backup-and-restore.md` |
+| Deferred (Postgres `122`, Karakeep `123`, Redis `133`, pgAdmin `142`, `VM 103` HAOS) | `services/zone2-postgres-122.md`, `services/zone2-karakeep-123.md`, `services/zone3-redis-133.md`, `services/zone4-pgadmin-142.md`, `services/vm-haos-103.md` |
+| Build order & future services | `roadmap/build-sequence.md`, `roadmap/future-services.md` |
 | Persistence & backups | `architecture/persistence-design.md` |
-
-## Map
-
-```
-kb-v2/
-  index.md                  # this file
-  architecture/             # design, schemes, strategies
-  services/                 # one page per deployable unit (CTID/VM)
-  operations/               # runbooks (procedural only)
-  troubleshooting/          # required-setup notes, linked from services
-  decisions/                # ADRs — reserved / structural choices
-  roadmap/                  # build-sequence (only chronology) + future-services
-  reference/                # glossary, IP matrix, inventory (no secrets)
-  eval/                     # golden Q/A for RAG evaluation
-  templates/                # page templates (do not ingest as content)
-```
 
 ## Conventions
 
 - One concept per file, 150–400 lines max.
 - Frontmatter required on every content file (see `templates/frontmatter-reference.md`).
-- IPs/CTIDs are canonical only in `reference/ip-ctid-matrix.md`. All other pages link there.
-- Secrets are never stored here — only `vault_*` variable *names*, never values.
-- The only chronological document is `roadmap/build-sequence.md`.
-
-## Maintenance
-
-- Flip `planned` → `verified` with `last_verified` date only after a green build.
-- Fix goes to KB first, then to infra (reproducibility policy).
+- IPs/IDs are canonical only in `reference/ip-ctid-matrix.md`. All other pages link there.
+- Secrets are never stored here — only variable *names*, never values.
 - See `CONTRIBUTING.md` for authoring rules.

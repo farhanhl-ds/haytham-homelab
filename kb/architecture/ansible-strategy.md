@@ -6,71 +6,47 @@ ctid: "n/a"
 ip: n/a
 status: planned
 last_verified: unreleased
-tags: [architecture, ansible, vault, wsl]
+tags: [architecture, ansible, infisical, security, zones]
 retrievable: true
 ---
 
 # Ansible Strategy
 
-## 1. Control node
+## 1. Zero-Trust Control Node Execution (`ADR-008`)
 
-- WSL checkout of the repo (`ansible/` directory), not Windows native.
-- Terraform runs on Windows; Ansible runs on WSL. They have **separate `~/.ssh/` directories** — the most common auth failure is using the wrong filesystem's key.
-- The key baked into containers is the Windows `~/.ssh/id_ed25519.pub` (via `ssh_public_key_path` at `apply` time). Before running playbooks: copy the Windows private key to WSL `~/.ssh/id_ed25519` (`chmod 600`) and confirm `ansible_ssh_private_key_file: ~/.ssh/id_ed25519` in `group_vars/all.yml`.
-- Fresh WSL setup: `apt install -y ansible openssh-client bind9-dnsutils postgresql-client redis-tools`, then `ansible-galaxy collection install -r requirements.yml`.
+- Ansible runs on the disposable VMware NAT Ubuntu 24.04 control node (`devbox`) from the shared Git workspace `/srv/haytham-homelab`.
+- **OS Privilege Split:**
+  - `homelab-agent` (AI agent, unprivileged, zero `sudo`, kernel-blocked from `192.168.0.0/16`) may run **only** read-only dry-runs via `sudo -u homelab-ops /usr/local/libexec/haytham-ops/ops-ansible-check <playbook>`.
+  - Human operator (`sudo -iu homelab-ops`) executes live changes via `ops-ansible-apply <playbook>` on an interactive TTY.
+- SSH authentication uses the ephemeral `ssh-agent` started by `ops-ansible-*` with `/var/lib/haytham-ops/.ssh/id_ed25519_control` (revocable key, never stored in `/srv/haytham-homelab`).
+- Collections (`community.postgresql`, `community.docker`) are installed system-wide to `/usr/share/ansible/collections` by `bootstrap-control-node.sh`.
 
-## 2. Layout
+## 2. Layout (Security-Zone Playbooks)
 
-```
+```text
 ansible/
-  ansible.cfg (.vault_pass via vault_password_file, remote_user=root)
-  README.md (control-node setup + secrets bootstrap)
-  .vault_pass (plaintext, gitignored, never zipped/shared — create with openssl rand)
-  inventory/hosts.yml (tier10/20/30/40 groups with static IPs from the matrix)
-  group_vars/{all.yml, tier10.yml, tier20.yml, tier30.yml, tier40.yml}
-  tier10.yml, tier20.yml, tier30.yml, tier40.yml (entry playbooks, tier order)
-  roles/{pihole, npm, postgres, redis, pgadmin, docker, vaultwarden, karakeep}/
-  requirements.yml (community.postgresql, community.docker)
+  ansible.cfg (remote_user=root, collections_path incl. /usr/share/ansible/collections, NO .vault_pass!)
+  inventory/hosts.yml (proxmox, zone2, zone3, zone4 groups)
+  group_vars/{all.yml, proxmox.yml, zone2.yml, zone3.yml, zone4.yml}  # non-secret defaults ONLY
+  host_devices.yml      # /dev/net/tun (CT 132) & /dev/dri/* (CT 121)
+  zone3_infra.yml       # Pi-hole (130), NPM (131), Tailscale (132); deferred Redis (133)
+  zone2_protected.yml   # Vaultwarden (120), Immich (121); deferred Postgres (122), Karakeep (123)
+  zone4_apps.yml        # Homepage (140), Uptime Kuma (141); deferred pgAdmin (142)
+  host_backups.yml      # Proxmox host daily restic (incl. Zone 1 CT 110) + weekly vzdump
+  roles/{docker, pve_devices, backup, pihole, npm, tailscale, vaultwarden, immich, homepage, uptime_kuma, postgres, redis, pgadmin, karakeep}/
+  requirements.yml
 ```
 
-Run order is always `tier10 → tier20 → tier30 → tier40`.
+Run order: `host_devices.yml → zone3_infra.yml → zone2_protected.yml → zone4_apps.yml → host_backups.yml`.
 
-## 3. Vault pattern
+## 3. Runtime Secret Pattern (Zone 1 Infisical — Zero `.vault_pass`)
 
-Single master password for all tiers. Per-value `encrypt_string`, one file per tier mixing plaintext + `!vault` blocks:
+- No `.vault_pass` file and no `!vault` blocks live on `devbox` or in Git.
+- `group_vars/*.yml` declare `vault_*` placeholders as `CHANGEME` (triggering fail-safe guards if someone attempts to run `ansible-playbook` outside the wrappers).
+- When `ops-ansible-check` or `ops-ansible-apply` runs, `_ops-infisical-lib.sh` authenticates the **read-only** Machine Identity `homelab-ops-ro` against Zone 1 Infisical (`http://192.168.100.10:8080/api`), writes the target path's secrets (`/proxmox`, `/zone2`, `/zone3`, or `/zone4`) into an ephemeral RAM-only `/dev/shm/haytham-sec.XXXXXX.json` (`0600`), passes `-e @<file>` to `ansible-playbook`, and runs `shred -u -z` on `EXIT` trap.
+- All secret creation and rotation happens inside the Infisical Web UI (`operations/secret-rotation.md`).
 
-```bash
-openssl rand -base64 24 > .vault_pass && chmod 600 .vault_pass
-SECRET1=$(openssl rand -base64 32 | tr -dc 'a-zA-Z0-9' | head -c 32)
-ansible-vault encrypt_string "$SECRET1" --name 'vault_pihole_webpassword'
-# paste resulting !vault block into group_vars/tier10.yml
-unset SECRET1; history -c
-```
+## 4. Reusable Roles & Reproducibility
 
-Rules: generate with `openssl rand`, never paste values into chat, `unset SECRET; history -c` after each. Encrypted blocks are safe to commit (unlike `terraform.tfvars`). `CHANGEME` placeholders in a fresh checkout mean "generate now".
-
-Read one value with:
-
-```bash
-ansible localhost -m debug -a "var=vault_pgadmin_default_password" -e @group_vars/tier20.yml --vault-password-file .vault_pass
-```
-
-(`ansible-vault view` only works for whole-file encryption, not this pattern.)
-
-## 4. Reusable roles
-
-- `roles/docker` (official apt repo install) consumed via `meta/main.yml` dependencies by `npm`, `pgadmin`, `vaultwarden`, `karakeep`. Fix Docker install in exactly one place.
-- `community.postgresql` for DB/user provisioning; `community.docker.docker_compose_v2` for compose (not raw `command`).
-- Cross-tier scoping constraint: `group_vars` are per-inventory-group. A var in `tier20.yml` is invisible to `tier30` hosts. If a future app consumes Tier 20 from another tier, duplicate the value under a tier-scoped name with identical plaintext (generate once, encrypt twice).
-
-## 5. Reproducibility rule
-
-Every manual/SSH fix must be ported back to a role in the same session. Full build with `failed=0` on every playbook is the acceptance gate.
-
-## 6. FAQ
-
-**Q: Ansible fails auth right after Terraform succeeded?**
-A: Wrong key filesystem (Windows vs WSL). Verify `ansible_ssh_private_key_file` points at the baked-in private key.
-
-**Q: How do I rotate one secret?**
-A: See `operations/secret-rotation.md` — usually re-`encrypt_string` + re-run the owning playbook, except pgAdmin password (first-run only).
+- `roles/docker` (official apt repo install) is shared via `meta/main.yml` dependencies across containerized services.
+- Every manual SSH fix must be ported back into `kb/` + `ansible/` in the same session.

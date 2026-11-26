@@ -14,7 +14,7 @@ set -euo pipefail
 #   PHOTOS_BACKUP_DIR="/mnt/d/Backups/haytham/immich-originals"
 
 PVE_HOST="${PVE_HOST:-root@192.168.100.2}"
-IMMICH_HOST="${IMMICH_HOST:-root@192.168.100.61}"
+IMMICH_HOST="${IMMICH_HOST:-root@192.168.100.21}"
 SSH_KEY="${SSH_KEY:-$HOME/.ssh/id_ed25519}"
 
 STATE_BACKUP_DIR="${STATE_BACKUP_DIR:-$HOME/homelab-backups/state}"
