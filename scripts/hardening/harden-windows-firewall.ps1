@@ -54,12 +54,14 @@ function Get-SubnetCidr {
         [Parameter(Mandatory)] [int]$PrefixLength
     )
     $ipBytes = ([System.Net.IPAddress]::Parse($IPAddress)).GetAddressBytes()
-    [Array]::Reverse($ipBytes)
-    $ipInt = [BitConverter]::ToUInt32($ipBytes, 0)
-    $maskInt = if ($PrefixLength -eq 0) { [uint32]0 } else { [uint32]([uint64]0xFFFFFFFF -shl (32 - $PrefixLength) -band 0xFFFFFFFF) }
-    $netInt = $ipInt -band $maskInt
-    $netBytes = [BitConverter]::GetBytes($netInt)
-    [Array]::Reverse($netBytes)
+    $netBytes = New-Object byte[] 4
+    $remaining = $PrefixLength
+    for ($i = 0; $i -lt 4; $i++) {
+        $bits = [Math]::Min([Math]::Max($remaining, 0), 8)
+        $mask = if ($bits -eq 0) { 0 } else { 256 - [int][Math]::Pow(2, 8 - $bits) }
+        $netBytes[$i] = [byte]($ipBytes[$i] -band $mask)
+        $remaining -= 8
+    }
     $netIp = ([System.Net.IPAddress]::new($netBytes)).IPAddressToString
     return "$netIp/$PrefixLength"
 }
