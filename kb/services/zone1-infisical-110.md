@@ -30,7 +30,7 @@ Self-hosted, immutable machine secrets manager serving as the single source of t
 | Stack | Self-contained Docker Compose: `infisical` (`NODE_OPTIONS=--max-old-space-size=512`), `postgres:16-alpine` (`shared_buffers=64MB`), `redis:7-alpine` (`maxmemory 64mb`) |
 | Direct API URL | `http://192.168.100.10:8080` (used by `homelab-ops` wrappers so automation works even when Pi-hole/NPM are down) |
 | Optional NPM Host | `https://infisical.haytham.internal → 192.168.100.10:8080` (WebSockets ON) |
-| SSH Access | **Windows Break-Glass key ONLY** (`devbox` control node has zero SSH access to CT `110`) |
+| SSH Access | **Windows Break-Glass key ONLY** (`haytham-ctl` control node has zero SSH access to CT `110`) |
 
 ## 3. Provisioning Ref
 
@@ -54,7 +54,7 @@ Create Project `haytham-homelab` (Environment: `prod`) in Infisical Web UI (`htt
 
 ### Machine Identity RBAC (Zero-Trust)
 
-- **`homelab-ops-ro` (Universal Auth):** Granted **Viewer / Read-Only** role strictly on Project `haytham-homelab` (`prod`). Credentials stored exclusively in `/var/lib/haytham-ops/infisical-ops.env` (`0600 homelab-ops:homelab-ops`) on `devbox`.
+- **`homelab-ops-ro` (Universal Auth):** Granted **Viewer / Read-Only** role strictly on Project `haytham-homelab` (`prod`). Credentials stored exclusively in `/var/lib/haytham-ops/infisical-ops.env` (`0600 homelab-ops:homelab-ops`) on `haytham-ctl`.
 - **`homelab-agent`:** Receives **ZERO** Infisical credentials and is blocked at the Linux kernel (`iptables --uid-owner`) from reaching `192.168.100.10`.
 - **Human Admin:** Logs into Infisical Web UI from the Windows PC (with MFA) to create, rotate, and audit secrets.
 
@@ -67,7 +67,7 @@ Create Project `haytham-homelab` (Environment: `prod`) in Infisical Web UI (`htt
 ## 5. Verification
 
 ```bash
-# From Windows PC or homelab-ops on devbox:
+# From Windows PC or homelab-ops on haytham-ctl:
 curl -fsS http://192.168.100.10:8080/api/status
 
 # From Proxmox host haytham:
@@ -86,5 +86,5 @@ pct exec 110 -- docker ps
 **Q: Why is Infisical in Zone 1 instead of Zone 2 or Zone 3?**
 A: Zone 1 is completely outside Terraform state and `terraform@pve` ACLs, ensuring secrets remain available across every Zone 2–4 rebuild and eliminating circular bootstrap dependencies (`ADR-008`).
 
-**Q: What if `devbox` is compromised?**
-A: `homelab-ops-ro` is strictly read-only on Infisical and cannot delete or alter stored secrets. Revoke `homelab-ops-ro` in the Infisical UI, rotate any exposed credentials, revert `devbox` to VMware snapshot `clean-base`, and issue a fresh Machine Identity secret.
+**Q: What if `haytham-ctl` is compromised?**
+A: `homelab-ops-ro` is strictly read-only on Infisical and cannot delete or alter stored secrets. Revoke `homelab-ops-ro` in the Infisical UI, rotate any exposed credentials, revert `haytham-ctl` to VMware snapshot `clean-base`, and issue a fresh Machine Identity secret.

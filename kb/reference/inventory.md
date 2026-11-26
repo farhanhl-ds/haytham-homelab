@@ -31,7 +31,7 @@ retrievable: true
 
 ## Ansible
 
-- Control node: Linux workstation (`devbox`) or WSL Ubuntu 24.04 checkout (`ansible/`). Collections in `requirements.yml` (`community.postgresql`, `community.docker`).
+- Control node: Linux workstation (`haytham-ctl`) or WSL Ubuntu 24.04 checkout (`ansible/`). Collections in `requirements.yml` (`community.postgresql`, `community.docker`).
 - `ansible.cfg`: `remote_user=root`, `vault_password_file=.vault_pass` (gitignored, never shared), `collections_path=./collections:~/.ansible/collections`.
 - Playbook order (Phase 1): `host_devices.yml → tier10.yml → tier30.yml → tier40.yml → tier60.yml → tier90.yml → tier80.yml`.
 - Vault pattern: single master password, per-value `encrypt_string`, one `group_vars/<group>.yml` per group.
@@ -64,7 +64,7 @@ flowchart LR
     PC_TRUST["Windows Trusted Root CA\n(haytham-internal.crt only)"]
   end
 
-  subgraph CTRL["Linux Control Node (devbox / WSL)"]
+  subgraph CTRL["Linux Control Node (haytham-ctl / WSL)"]
     CTRL_SSH["SSH Key Pair\n~/.ssh/id_ed25519(.pub)\n(ssh-agent + terraform.tfvars)"]
     CTRL_CERT["Wildcard Cert Master\n~/homelab-cert/\nhaytham-internal.{key,crt,cnf}"]
   end
@@ -94,7 +94,7 @@ flowchart LR
 | Location | SSH Keys (`authorized_keys` / Key Pair) | TLS Certificates |
 |---|---|---|
 | **Windows PC** (off-host backup client) | Key pair `%USERPROFILE%\.ssh\id_ed25519{,.pub}` (private key stays local; `.pub` authorized on `.2` & `.61` for `pull-homelab-backups.bat`) | `haytham-internal.crt` (public cert only) installed in Windows **Trusted Root CA** (`certmgr.msc`); install on mobile/other client devices too |
-| **Linux Control Node** (`devbox` / WSL) | Primary admin key pair `~/.ssh/id_ed25519{,.pub}` (loaded into `ssh-agent` for Terraform; `.pub` referenced by `terraform.tfvars` `ssh_public_key_path`) | Master wildcard bundle `~/homelab-cert/haytham-internal.{key,crt,cnf}` (`.key` `chmod 600`; never commit) |
+| **Linux Control Node** (`haytham-ctl` / WSL) | Primary admin key pair `~/.ssh/id_ed25519{,.pub}` (loaded into `ssh-agent` for Terraform; `.pub` referenced by `terraform.tfvars` `ssh_public_key_path`) | Master wildcard bundle `~/homelab-cert/haytham-internal.{key,crt,cnf}` (`.key` `chmod 600`; never commit) |
 | **Proxmox `haytham` (`.2`)** | `/root/.ssh/authorized_keys` (`/etc/pve/priv/authorized_keys`): Control node `.pub` (Terraform/Ansible) + Windows PC `.pub` (Track 1 `restic` pull) | Built-in Proxmox `:8006` cert internally; accessed via NPM at `https://pve.haytham.internal` |
 | **CT `120` NPM (`.12`)** | `/root/.ssh/authorized_keys`: Control node `.pub` (injected by Terraform) | **Only container holding the wildcard cert:** `haytham-internal.key` + `haytham-internal.crt` imported once in NPM UI and attached to all Proxy Hosts (`../services/zone3-npm-131.md`) |
 | **CT `610` Immich (`.61`)** | `/root/.ssh/authorized_keys`: Control node `.pub` (Terraform) + Windows PC `.pub` (Track 2 photo pull; re-add after full CT rebuild unless added to Terraform) | None (NPM terminates HTTPS) |

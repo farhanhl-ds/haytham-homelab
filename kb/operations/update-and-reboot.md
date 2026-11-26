@@ -80,7 +80,7 @@ echo "All active Phase 1 managed containers rebooted in dependency-safe order."
 
 ## 7. Post-Reboot Verification
 
-Run read-only verification on `devbox`:
+Run read-only verification on `haytham-ctl`:
 ```bash
 sudo -u homelab-ops /usr/local/libexec/haytham-ops/ops-health-check
 ```

@@ -26,8 +26,8 @@ retrievable: true
   - `.30–.39` (`CT 130–139`): **Zone 3 · Core Infra / Network** (`homelab-ephemeral`, freely rebuildable).
   - `.40–.49` (`CT 140–149`): **Zone 4 · Ephemeral Apps & Ops** (`homelab-ephemeral`, freely rebuildable).
   - `.50–.59` (`CT 150–159`): **Zone 5 · Sandbox / Lab** (`homelab-ephemeral`, future disposable experiments).
-  - `.60–.99`: **Open Reserve** (unallocated, blocked in `devbox` UFW until expanded).
-  - `.100–.254`: **DHCP Pool** (LAN clients, blocked in `devbox` UFW).
+  - `.60–.99`: **Open Reserve** (unallocated, blocked in `haytham-ctl` UFW until expanded).
+  - `.100–.254`: **DHCP Pool** (LAN clients, blocked in `haytham-ctl` UFW).
 
 ## Active Phase 1 Matrix (8 GB RAM Lean Scope — ADR-007 + ADR-008)
 
@@ -65,4 +65,4 @@ retrievable: true
 A: `ID = 100 + last_octet` for EVERY VM and LXC (`192.168.100.21` ↔ `CT 121`, `192.168.100.3` ↔ `VM 103`).
 
 **Q: Why are `.60–.99` unallocated and blocked in UFW?**
-A: Keeping the active footprint tightly packed into `.10–.49` minimizes the firewall surface on `devbox` while leaving 40 clean static IPs if Zone 2 or Zone 4 ever needs expansion later.
+A: Keeping the active footprint tightly packed into `.10–.49` minimizes the firewall surface on `haytham-ctl` while leaving 40 clean static IPs if Zone 2 or Zone 4 ever needs expansion later.

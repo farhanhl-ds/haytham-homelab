@@ -8,7 +8,7 @@ REM Uses only Microsoft-signed inbox Windows tools: cmd.exe, ssh.exe, and tar.ex
 REM
 REM Prerequisites:
 REM   Windows-only Break-Glass / Backup-Pull SSH key at %USERPROFILE%\.ssh\id_ed25519
-REM   (separate from devbox's revocable control-node key) authorized on:
+REM   (separate from haytham-ctl's revocable control-node key) authorized on:
 REM     - Zone 2 CT 121 Immich (192.168.100.21) for Track 2 photos
 REM     - Zone 0 Proxmox host  (192.168.100.2)  for Track 1 restic state (incl. CT 110 Infisical)
 REM

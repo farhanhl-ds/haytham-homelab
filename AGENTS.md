@@ -5,7 +5,7 @@ Single-node Proxmox VE homelab on a Lenovo ThinkCentre M910q Tiny (**Intel i5 7t
 ## Canonical Facts
 
 - **Proxmox host:** `haytham` at `192.168.100.2` (`vmbr0`, gateway `192.168.100.1`, subnet `192.168.100.0/24`, storage `local` + `local-lvm`).
-- **Control node:** Disposable VMware NAT Ubuntu 24.04 VM (`devbox`), shared Git repo at `/srv/haytham-homelab`. AI agent runs as unprivileged `homelab-agent` (no `sudo`, no `lxd`, kernel-blocked from `192.168.0.0/16`); human operator runs `homelab-ops` (`ADR-008`).
+- **Control node:** Disposable VMware NAT Ubuntu 24.04 VM (`haytham-ctl`), shared Git repo at `/srv/haytham-homelab`. AI agent runs as unprivileged `homelab-agent` (no `sudo`, no `lxd`, kernel-blocked from `192.168.0.0/16`); human operator runs `homelab-ops` (`ADR-008`).
 - **Domain:** `haytham.internal` (wildcard `*.haytham.internal → 192.168.100.31` NPM via Pi-hole `.30`, self-signed wildcard TLS).
 - **Universal ID ↔ IP formula (`ADR-008`):** `Proxmox ID = 100 + last_octet` for **both VMs and LXCs** (10 slots per Security Zone; `.60–.99` open reserve blocked in UFW; `.100–.254` DHCP).
 - **Active Phase 1 scope (`ADR-007` + `ADR-008`, Lean 8 GB):** 1 Immutable Zone 1 LXC + 7 Terraform-managed LXCs + host backups:

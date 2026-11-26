@@ -3,7 +3,7 @@ set -euo pipefail
 
 # Layer 3 Hardening — OS Privilege Split (`homelab-agent` vs `homelab-ops`)
 #
-# Establishes a hard Linux UID/GID security boundary on `devbox`:
+# Establishes a hard Linux UID/GID security boundary on `haytham-ctl`:
 #   - `homelab-ops`   : Human-gated operator account owning `/var/lib/haytham-ops/` (0700)
 #                       (Infisical RO Machine Identity, terraform.tfstate, non-secret tfvars,
 #                        revocable control SSH key, wildcard SSL cert).
@@ -13,7 +13,7 @@ set -euo pipefail
 #   - `/usr/local/libexec/haytham-ops/` : Immutable root-owned wrapper scripts.
 #   - `/etc/sudoers.d/haytham-agent`    : Allows homelab-agent ONLY the 3 read-only wrappers.
 #
-# Run as root on `devbox` (Ubuntu 24.04).
+# Run as root on `haytham-ctl` (Ubuntu 24.04).
 
 if [[ "${EUID}" -ne 0 ]]; then
   echo "[ERROR] Run as root: sudo $0" >&2

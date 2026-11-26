@@ -14,7 +14,7 @@ retrievable: true
 
 ## 1. Purpose
 
-Protect critical homelab state — **Zone 1 Infisical (`CT 110`)**, **Zone 2 Vaultwarden (`CT 120`)**, and **Zone 2 Immich (`CT 121`)** — across **two physical storages** (Proxmox 1 TB SSD + Windows PC or external USB drive) with **zero cloud exposure, zero Samba shares, and complete independence from the disposable `devbox` control node**.
+Protect critical homelab state — **Zone 1 Infisical (`CT 110`)**, **Zone 2 Vaultwarden (`CT 120`)**, and **Zone 2 Immich (`CT 121`)** — across **two physical storages** (Proxmox 1 TB SSD + Windows PC or external USB drive) with **zero cloud exposure, zero Samba shares, and complete independence from the disposable `haytham-ctl` control node**.
 
 ## 2. Architecture (Two-Track Model)
 
@@ -24,7 +24,7 @@ Protect critical homelab state — **Zone 1 Infisical (`CT 110`)**, **Zone 2 Vau
 | **Track 1b — LXC Snapshots** | Lightweight LXCs (`110, 120, 130, 131, 132, 140, 141`) | Proxmox `vzdump` (`zstd`, `mode=snapshot`) | Weekly Sun `03:30` (keep last 2) | Proxmox `local` storage |
 | **Track 2 — Immich Originals** | `CT 121` (`192.168.100.21`) `/opt/immich/library/{library,upload,profile}/` (excludes regeneratable `thumbs/` & `encoded-video/`) | Direct incremental SSH pull (`scripts/pull-homelab-backups.bat` on Windows `cmd`, `scripts/pull-homelab-backups.sh` on Linux/WSL) | On-logon / daily Task Scheduler or on-demand | Windows PC internal drive or external USB drive (no deletes) |
 
-> Track 2 intentionally does **not** duplicate 500 GB of photos onto the same 1 TB Proxmox SSD. Pulling directly from Windows with a **Windows-only SSH key** guarantees a compromised `devbox` cannot alter or delete off-host backups.
+> Track 2 intentionally does **not** duplicate 500 GB of photos onto the same 1 TB Proxmox SSD. Pulling directly from Windows with a **Windows-only SSH key** guarantees a compromised `haytham-ctl` cannot alter or delete off-host backups.
 
 ## 3. Prerequisites
 
@@ -62,7 +62,7 @@ PHOTOS_BACKUP_DIR="/mnt/d/Backups/haytham/immich-originals" \
 
 ## 5. Verification
 
-- From `devbox` (`homelab-agent` read-only check): `sudo -u homelab-ops /usr/local/libexec/haytham-ops/ops-health-check`
+- From `haytham-ctl` (`homelab-agent` read-only check): `sudo -u homelab-ops /usr/local/libexec/haytham-ops/ops-health-check`
 - From Windows Break-Glass SSH on `haytham` (`192.168.100.2`):
   ```bash
   systemctl start homelab-backup.service
@@ -111,7 +111,7 @@ rm -rf /tmp/vw-restore
 ### Zone 2 Immich (`CT 121` — Full Recovery)
 
 1. From Windows Break-Glass SSH on `haytham`: `./harden-pve-rbac.sh --unlock-dr 121`.
-2. From `homelab-ops` on `devbox`: `ops-tf-apply` → `ops-ansible-apply host_devices.yml` → `ops-ansible-apply zone2_protected.yml`.
+2. From `homelab-ops` on `haytham-ctl`: `ops-tf-apply` → `ops-ansible-apply host_devices.yml` → `ops-ansible-apply zone2_protected.yml`.
 3. Immediately re-lock on `haytham`: `./harden-pve-rbac.sh --lock`.
 4. Push original photos back from Windows to `CT 121` (`192.168.100.21`):
    ```bat

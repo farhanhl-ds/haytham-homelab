@@ -1,12 +1,12 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# Layer 1 Firewall Hardening for Disposable Control Node (`devbox`)
+# Layer 1 Firewall Hardening for Disposable Control Node (`haytham-ctl`)
 #
 # Enforces two complementary boundaries:
 #   1. UFW default-deny incoming & outgoing:
 #        - Inbound: ALLOWS ONLY TCP/22 from the Windows host VMnet8 IP (/32) so
-#          Windows Terminal can initiate unidirectional SSH/SCP into `devbox`.
+#          Windows Terminal can initiate unidirectional SSH/SCP into `haytham-ctl`.
 #        - Outbound: ALLOWS ONLY active/deferred Security-Zone homelab endpoints
 #          (.2 Proxmox, .10 Zone 1 Infisical, .20-.23 Zone 2, .30-.33 Zone 3,
 #           .40-.42 Zone 4) on minimal required ports.
@@ -19,7 +19,7 @@ set -euo pipefail
 #          interact with the homelab ONLY through the 3 audited `sudo -u homelab-ops`
 #          read-only wrappers.
 #
-# Run as root on `devbox` (Ubuntu 24.04).
+# Run as root on `haytham-ctl` (Ubuntu 24.04).
 
 if [[ "${EUID}" -ne 0 ]]; then
   echo "[ERROR] Run as root: sudo $0" >&2
@@ -78,7 +78,7 @@ ufw default deny outgoing
 
 # ------------------------------------------------------------------
 # 0. Explicit INBOUND ALLOW — Windows Terminal SSH via VMnet8 ONLY
-#    Unidirectional: Windows initiates TCP/22 -> devbox; devbox -> Windows
+#    Unidirectional: Windows initiates TCP/22 -> haytham-ctl; haytham-ctl -> Windows
 #    NEW connections remain 100% blocked by UFW egress & Windows Firewall.
 # ------------------------------------------------------------------
 if [[ "${ALLOW_VMNET_SSH}" == "1" && -n "$VMNET_HOST_IP" ]]; then

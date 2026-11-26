@@ -23,14 +23,14 @@ if [[ "${EUID}" -ne 0 ]]; then
 fi
 
 if ! command -v pct >/dev/null 2>&1 || ! command -v pveum >/dev/null 2>&1; then
-  echo "[ERROR] Proxmox CLI tools (pct, pveum) not found. Run this on haytham, not devbox." >&2
+  echo "[ERROR] Proxmox CLI tools (pct, pveum) not found. Run this on haytham, not haytham-ctl." >&2
   exit 1
 fi
 
 BREAKGLASS_PUBKEY="${1:-${BREAKGLASS_PUBKEY_FILE:-}}"
 if [[ -z "$BREAKGLASS_PUBKEY" || ! -f "$BREAKGLASS_PUBKEY" ]]; then
   echo "Usage: $0 <path-to-windows-breakglass-id_ed25519.pub>" >&2
-  echo "  NOTE: Pass ONLY your Windows-only Break-Glass SSH public key (NOT devbox's key)." >&2
+  echo "  NOTE: Pass ONLY your Windows-only Break-Glass SSH public key (NOT haytham-ctl's key)." >&2
   exit 1
 fi
 
@@ -237,7 +237,7 @@ NEXT STEPS (HUMAN OPERATOR — FROM WINDOWS PC)
 4. Create a READ-ONLY Machine Identity named "homelab-ops-ro"
    (Universal Auth) granted Viewer/Read-Only access ONLY to project
    "haytham-homelab" (prod). Copy Client ID & Client Secret into
-   /var/lib/haytham-ops/infisical-ops.env on devbox (0600 homelab-ops).
+   /var/lib/haytham-ops/infisical-ops.env on haytham-ctl (0600 homelab-ops).
 5. CRITICAL DR STEP: Record ENCRYPTION_KEY and AUTH_SECRET from
    \`pct exec ${CTID} -- grep -E '^(ENCRYPTION_KEY|AUTH_SECRET)=' /opt/infisical/.env\`
    into your offline emergency sheet / Windows KeePassXC (NEVER paste in chat!).

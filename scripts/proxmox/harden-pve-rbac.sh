@@ -26,7 +26,7 @@ fi
 
 for bin in pveum pvesh pct; do
   if ! command -v "$bin" >/dev/null 2>&1; then
-    echo "[ERROR] Missing Proxmox binary '$bin'. Run this on haytham, not devbox." >&2
+    echo "[ERROR] Missing Proxmox binary '$bin'. Run this on haytham, not haytham-ctl." >&2
     exit 1
   fi
 done

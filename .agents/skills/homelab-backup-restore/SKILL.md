@@ -14,7 +14,7 @@ Canonical runbook: `kb/operations/backup-and-restore.md` (zero-cloud, zero-Samba
 
 - **Track 1 (Critical State — Daily 03:00 on `haytham` `.2`):** Proxmox systemd `homelab-backup.timer` dumps **Zone 1 CT `110` Infisical (`pg_dumpall` + `/opt/infisical/.env`)**, Zone 2 **CT `120` Vaultwarden** SQLite (hot `.backup`) + keys/attachments, **CT `121` Immich** `pg_dumpall`, Zone 3 **CT `130` Pi-hole** & **CT `131` NPM**, Zone 4 **CT `140` Homepage** & **CT `141` Uptime Kuma** SQLite, and `/etc/pve/lxc/*.conf` into encrypted `restic` repo `/var/backups/homelab/restic` (retain 7 daily / 4 weekly).
 - **Track 1b (LXC Snapshots — Sun 03:30):** `homelab-vzdump.timer` snapshots lightweight CTs (`110, 120, 130, 131, 132, 140, 141`) to Proxmox `local` storage (keep last 2).
-- **Track 2 (Immich Originals — Windows Pull-Only):** Incremental SSH pull directly from **CT `121` (`192.168.100.21`)** (`/opt/immich/library/{library,upload,profile}/`) via `scripts/pull-homelab-backups.bat` (inbox Windows `ssh.exe` + `tar.exe`, Device Guard safe) or `scripts/pull-homelab-backups.sh` using the **Windows-only SSH key** (completely independent of `devbox`). Excludes `thumbs/` & `encoded-video/`, intentionally omits deletes.
+- **Track 2 (Immich Originals — Windows Pull-Only):** Incremental SSH pull directly from **CT `121` (`192.168.100.21`)** (`/opt/immich/library/{library,upload,profile}/`) via `scripts/pull-homelab-backups.bat` (inbox Windows `ssh.exe` + `tar.exe`, Device Guard safe) or `scripts/pull-homelab-backups.sh` using the **Windows-only SSH key** (completely independent of `haytham-ctl`). Excludes `thumbs/` & `encoded-video/`, intentionally omits deletes.
 
 ## Routine Backup Verification
 

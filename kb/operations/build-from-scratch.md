@@ -31,7 +31,7 @@ retrievable: true
 
 - Proxmox host `haytham` (`192.168.100.2`), `vmbr0`, `local` + `local-lvm`, Ubuntu 24.04 template downloaded via GUI (`ADR-002`).
 - **Zone 1 `CT 110` Infisical (`192.168.100.10:8080`)** running with secrets populated under `/terraform`, `/proxmox`, `/zone2`, `/zone3` (`services/zone1-infisical-110.md`).
-- Hardened `devbox` control node (`bootstrap-control-node.sh`), `/var/lib/haytham-ops/` populated (`infisical-ops.env`, non-secret `terraform.tfvars`, `id_ed25519_control`, `windows_breakglass.pub`), and `harden-pve-rbac.sh --init` completed on `haytham`.
+- Hardened `haytham-ctl` control node (`bootstrap-control-node.sh`), `/var/lib/haytham-ops/` populated (`infisical-ops.env`, non-secret `terraform.tfvars`, `id_ed25519_control`, `windows_breakglass.pub`), and `harden-pve-rbac.sh --init` completed on `haytham`.
 - Wildcard SSL cert archived in `/var/lib/haytham-ops/homelab-cert/` + Windows backup (`architecture/ssl-strategy.md`).
 - Router DHCP pool `.100–.254`.
 

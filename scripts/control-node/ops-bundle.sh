@@ -69,7 +69,7 @@ cmd_pack() {
   echo "[OK] Encrypted recovery bundle created: ${out_file}"
   echo "     SHA-256: $(sha256sum "${out_file}" | awk '{print $1}')"
   echo "[NEXT] Copy this encrypted .tar.age file to your Windows PC + offline USB drive,"
-  echo "       then delete the copy from ${STATE_DIR} if you do not want bundles on devbox."
+  echo "       then delete the copy from ${STATE_DIR} if you do not want bundles on haytham-ctl."
 }
 
 cmd_unpack() {
@@ -96,7 +96,7 @@ cmd_unpack() {
   local ctrl_key="${STATE_DIR}/.ssh/id_ed25519_control"
   if [[ ! -f "${ctrl_key}" ]]; then
     echo "[INFO] Generating fresh revocable Control Node SSH keypair (${ctrl_key})..."
-    ssh-keygen -t ed25519 -a 64 -N "" -C "homelab-ops@devbox-$(date -u +%Y%m%d)" -f "${ctrl_key}" >/dev/null
+    ssh-keygen -t ed25519 -a 64 -N "" -C "homelab-ops@haytham-ctl-$(date -u +%Y%m%d)" -f "${ctrl_key}" >/dev/null
     chmod 0600 "${ctrl_key}"
     chmod 0644 "${ctrl_key}.pub"
   fi
@@ -110,7 +110,7 @@ cmd_unpack() {
   echo "  1. Authorize the new public key above on haytham (192.168.100.2) and active LXCs"
   echo "     (192.168.100.20, .21, .30, .31, .32, .40, .41) — NEVER on Zone 1 CT 110 Infisical!"
   echo "  2. If rebuilding after a suspected compromise:"
-  echo "     a) Remove the old devbox key line from /root/.ssh/authorized_keys on haytham & LXCs."
+  echo "     a) Remove the old haytham-ctl key line from /root/.ssh/authorized_keys on haytham & LXCs."
   echo "     b) Rotate the 'homelab-ops-ro' Machine Identity secret in Infisical UI (http://192.168.100.10:8080)"
   echo "        and update ${STATE_DIR}/infisical-ops.env."
 }

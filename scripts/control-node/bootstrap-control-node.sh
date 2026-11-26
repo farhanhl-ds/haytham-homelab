@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# Layer 4 — Disposable Control Node Bootstrap (`devbox`, Ubuntu 24.04)
+# Layer 4 — Disposable Control Node Bootstrap (`haytham-ctl`, Ubuntu 24.04)
 #
 # Rebuilds a fresh Ubuntu 24.04 VMware VM into a hardened Haytham control node
 # in < 10 minutes:
@@ -133,7 +133,7 @@ sysctl -w dev.tty.legacy_tiocsti=0 >/dev/null 2>&1 || true
 HUMAN_HOME="$(getent passwd "${HUMAN_USER}" | cut -d: -f6 || echo "/home/${HUMAN_USER}")"
 if [[ ! -s "${HUMAN_HOME}/.ssh/authorized_keys" ]]; then
   echo "[WARN] PasswordAuthentication is disabled, and ${HUMAN_HOME}/.ssh/authorized_keys is missing/empty!"
-  echo "       Add your Windows dedicated devbox pubkey (id_ed25519_devbox.pub — NOT Break-Glass!)"
+  echo "       Add your Windows dedicated haytham-ctl pubkey (id_ed25519_haytham_ctl.pub — NOT Break-Glass!)"
   echo "       via VMware Console BEFORE taking the 'clean-base' snapshot or SSHing from Windows Terminal."
 fi
 
@@ -145,12 +145,12 @@ cat <<'DONE_EOF'
 ====================================================================
 CONTROL NODE BOOTSTRAP COMPLETE — TAKE GOLDEN SNAPSHOT NOW!
 ====================================================================
-1. Ensure your Windows dedicated devbox SSH PUBLIC key
-   (id_ed25519_devbox.pub — NEVER your Windows Break-Glass key!)
+1. Ensure your Windows dedicated haytham-ctl SSH PUBLIC key
+   (id_ed25519_haytham_ctl.pub — NEVER your Windows Break-Glass key!)
    is in ~/.ssh/authorized_keys (chmod 0600) so Windows Terminal
-   SSH (`ssh devbox-agent` / `ssh devbox-ops`) works immediately
+   SSH (`ssh haytham-ctl-agent` / `ssh haytham-ctl-ops`) works immediately
    after any snapshot revert.
-2. Shut down or pause devbox and take a VMware Snapshot named:
+2. Shut down or pause haytham-ctl and take a VMware Snapshot named:
      clean-base
    (BEFORE restoring any secrets into /var/lib/haytham-ops/!)
 3. Verify VMware settings:
@@ -160,8 +160,8 @@ CONTROL NODE BOOTSTRAP COMPLETE — TAKE GOLDEN SNAPSHOT NOW!
      - Copy & Paste     : Disabled
      - USB Auto-Connect : Disabled
 4. After taking `clean-base`, restore your encrypted state bundle
-   via Windows Terminal (`ssh devbox-ops` -> `ops-bundle unpack ...`).
+   via Windows Terminal (`ssh haytham-ctl-ops` -> `ops-bundle unpack ...`).
 5. Launch Antigravity (`agy`) ONLY as user `homelab-agent` inside
-   `/srv/haytham-homelab` (via `ssh devbox-agent` from Windows Terminal).
+   `/srv/haytham-homelab` (via `ssh haytham-ctl-agent` from Windows Terminal).
 ====================================================================
 DONE_EOF

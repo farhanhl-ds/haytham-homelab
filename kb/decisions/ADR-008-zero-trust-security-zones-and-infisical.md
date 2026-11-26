@@ -14,7 +14,7 @@ retrievable: true
 
 ## Context
 
-Running an AI coding/ops agent on a Linux control node (`devbox` inside VMware on a Windows host PC) introduces three structural risks when the control node holds unconstrained credentials:
+Running an AI coding/ops agent on a Linux control node (`haytham-ctl` inside VMware on a Windows host PC) introduces three structural risks when the control node holds unconstrained credentials:
 
 1. **Host spillover:** Shared folders, bidirectional clipboard, USB auto-connect, or unrestricted VMware networking could let a compromised VM probe or tamper with the Windows host PC or LAN router.
 2. **Prompt-injection blast radius:** Plaintext `.vault_pass`, `terraform.tfvars` (with `PVEVMAdmin` on `/`), and passwordless `root@192.168.100.2` SSH keys sitting inside the agent's UID would allow a single prompt-injected command to exfiltrate all secrets or destroy irreplaceable data (Immich photos, Vaultwarden credentials, local `restic` backups, or HAOS VM).
@@ -38,26 +38,26 @@ Every Proxmox guest (both VMs and LXCs) obeys `ID = 100 + last_octet`, grouped b
 
 ### 2. Layer 1 — Windows PC & VMware Hard Boundary + Egress Lockdown
 
-- `devbox` runs headless on **VMware NAT (`VMnet8`)** with Shared Folders, Drag & Drop, Copy & Paste, and USB auto-connect completely disabled.
+- `haytham-ctl` runs headless on **VMware NAT (`VMnet8`)** with Shared Folders, Drag & Drop, Copy & Paste, and USB auto-connect completely disabled.
 - Windows Defender Firewall (`scripts/hardening/harden-windows-firewall.ps1`) blocks all inbound connections initiated from the `VMnet8` subnet.
-- Daily operator access uses **unidirectional Windows-initiated SSH** from Windows Terminal over `VMnet8`: `devbox` UFW allows inbound `22/tcp` **only** from `VMNET_HOST_IP/32` (`192.168.x.1`), while `sshd` (`/etc/ssh/sshd_config.d/01-haytham-hardening.conf`) restricts login to `AllowUsers farhan`, enforces `PasswordAuthentication no` unconditionally, disables all forwarding (`AllowAgentForwarding no`, `AllowTcpForwarding no`, `X11Forwarding no`, `PermitTunnel no`), and sets `dev.tty.legacy_tiocsti = 0`.
-- `devbox` UFW (`scripts/hardening/harden-control-node-ufw.sh`) enforces default-deny egress, allowing only `.2` (`22, 8006`), `.10` (`8080`), `.30` (`22, 53`), active/deferred Zone 2–4 IPs (`22, 443`), and public internet HTTPS/DNS/NTP — explicitly denying all RFC1918 ranges (Router `.1`, Windows PC, `VMnet8` host `.1`, Reserve `.50–.99`, DHCP `.100–.254`) before broad internet rules.
+- Daily operator access uses **unidirectional Windows-initiated SSH** from Windows Terminal over `VMnet8`: `haytham-ctl` UFW allows inbound `22/tcp` **only** from `VMNET_HOST_IP/32` (`192.168.x.1`), while `sshd` (`/etc/ssh/sshd_config.d/01-haytham-hardening.conf`) restricts login to `AllowUsers farhan`, enforces `PasswordAuthentication no` unconditionally, disables all forwarding (`AllowAgentForwarding no`, `AllowTcpForwarding no`, `X11Forwarding no`, `PermitTunnel no`), and sets `dev.tty.legacy_tiocsti = 0`.
+- `haytham-ctl` UFW (`scripts/hardening/harden-control-node-ufw.sh`) enforces default-deny egress, allowing only `.2` (`22, 8006`), `.10` (`8080`), `.30` (`22, 53`), active/deferred Zone 2–4 IPs (`22, 443`), and public internet HTTPS/DNS/NTP — explicitly denying all RFC1918 ranges (Router `.1`, Windows PC, `VMnet8` host `.1`, Reserve `.50–.99`, DHCP `.100–.254`) before broad internet rules.
 - A persistent kernel UID rule (`haytham-agent-egress.service`) unconditionally blocks `homelab-agent` from contacting `192.168.0.0/16` directly (zero conntrack exceptions).
 
 ### 3. Layer 2 — Hypervisor Guardrails & Segregated SSH Keys
 
 - `scripts/proxmox/harden-pve-rbac.sh` strips global `PVEVMAdmin` from `/` on `terraform@pve`, scoping `PVEVMAdmin` strictly to `/pool/homelab-ephemeral`, `HomelabProtectedOps` to `/pool/homelab-protected`, and zero ACL on Zone 0 VMs and Zone 1 (`CT 110`).
 - Three segregated SSH keypairs:
-  1. **Windows Break-Glass + Backup-Pull key** (`%USERPROFILE%\.ssh\id_ed25519`): accesses Proxmox `.2` and Zone 1 `CT 110` (`scripts/pull-homelab-backups.bat`); **never** copied to or used against `devbox`.
-  2. **Windows Devbox Terminal key** (`%USERPROFILE%\.ssh\id_ed25519_devbox`): used exclusively from Windows Terminal to SSH/SCP into `devbox` (`farhan`) over `VMnet8`.
-  3. **Revocable Control-Node key** (`/var/lib/haytham-ops/.ssh/id_ed25519_control`): generated on `devbox`, excluded from `CT 110`, and automatically rotated on every `ops-bundle unpack`.
+  1. **Windows Break-Glass + Backup-Pull key** (`%USERPROFILE%\.ssh\id_ed25519`): accesses Proxmox `.2` and Zone 1 `CT 110` (`scripts/pull-homelab-backups.bat`); **never** copied to or used against `haytham-ctl`.
+  2. **Windows Control-Node Terminal key** (`%USERPROFILE%\.ssh\id_ed25519_haytham_ctl`): used exclusively from Windows Terminal to SSH/SCP into `haytham-ctl` (`farhan`) over `VMnet8`.
+  3. **Revocable Control-Node key** (`/var/lib/haytham-ops/.ssh/id_ed25519_control`): generated on `haytham-ctl`, excluded from `CT 110`, and automatically rotated on every `ops-bundle unpack`.
 
 ### 4. Layer 3 — OS Privilege Split & RAM-Only Runtime Secrets
 
 - Shared Git workspace lives at `/srv/haytham-homelab` (`homelab-ops:homelab-repo`, `2775`).
 - The AI agent runs as unprivileged `homelab-agent` (no `sudo`, no `lxd`, no secret access, no direct LAN). It may invoke **only** 3 immutable root-owned read-only wrappers (`/usr/local/libexec/haytham-ops/ops-tf-plan`, `ops-ansible-check`, `ops-health-check`) via scoped `sudoers`.
 - Human-only mutations (`ops-tf-apply`, `ops-ansible-apply`, `ops-bundle`) run exclusively as `homelab-ops` on an interactive TTY.
-- Zero `.vault_pass` and zero static secret values live on `devbox` disk. `homelab-ops` holds only a **read-only** Infisical Machine Identity (`homelab-ops-ro`) in `/var/lib/haytham-ops/infisical-ops.env` (`0600`) and fetches secrets into RAM (`/dev/shm` shredded on `EXIT` trap or ephemeral `TF_VAR_*` env vars). Secret rotation occurs exclusively in the Infisical Web UI with MFA and audit logging.
+- Zero `.vault_pass` and zero static secret values live on `haytham-ctl` disk. `homelab-ops` holds only a **read-only** Infisical Machine Identity (`homelab-ops-ro`) in `/var/lib/haytham-ops/infisical-ops.env` (`0600`) and fetches secrets into RAM (`/dev/shm` shredded on `EXIT` trap or ephemeral `TF_VAR_*` env vars). Secret rotation occurs exclusively in the Infisical Web UI with MFA and audit logging.
 
 ### 5. Layer 4 — Disposable Control Node Recovery (< 10 Minutes)
 
@@ -66,7 +66,7 @@ Every Proxmox guest (both VMs and LXCs) obeys `ID = 100 + last_octet`, grouped b
 
 ## Alternatives Considered
 
-- **Ansible Vault on `devbox` without Infisical:** Eliminates ~600–900 MB RAM overhead on the 8 GB host, but keeps a static `.vault_pass` on disk and requires manual `!vault` YAML rotation without centralized audit logs.
+- **Ansible Vault on `haytham-ctl` without Infisical:** Eliminates ~600–900 MB RAM overhead on the 8 GB host, but keeps a static `.vault_pass` on disk and requires manual `!vault` YAML rotation without centralized audit logs.
 - **Infisical Cloud (Free Tier):** Zero local RAM and no DR circularity, but violates the zero-cloud privacy principle (`ADR-007`).
 - **Keep legacy `CTID = IP * 10` tiers:** Avoids pre-production renumbering, but leaves stateful P0 assets scattered across non-contiguous pools and breaks the formula for VMs and Zone 1.
 

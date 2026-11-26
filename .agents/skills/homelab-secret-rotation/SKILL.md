@@ -23,7 +23,7 @@ Canonical runbooks: `kb/operations/secret-rotation.md` and `kb/services/zone1-in
    - `/zone2`: `vault_vaultwarden_admin_token`, `vault_immich_db_password`
    - `/zone3`: `vault_pihole_webpassword`, `vault_tailscale_authkey`
    - Update the secret value in Infisical UI (previous version is retained in Infisical audit history).
-2. **Human (`sudo -iu homelab-ops` on `devbox`):** Re-run the owning Ansible playbook so the service picks up the rotated value:
+2. **Human (`sudo -iu homelab-ops` on `haytham-ctl`):** Re-run the owning Ansible playbook so the service picks up the rotated value:
    ```bash
    ops-ansible-apply zone3_infra.yml     # for /zone3 secrets
    ops-ansible-apply zone2_protected.yml # for /zone2 secrets
@@ -33,7 +33,7 @@ Canonical runbooks: `kb/operations/secret-rotation.md` and `kb/services/zone1-in
 
 ## Workflow B — Rotate `homelab-ops-ro` Machine Identity or Control-Node SSH Key
 
-Required after any suspected `devbox` compromise:
+Required after any suspected `haytham-ctl` compromise:
 1. In Infisical UI → Access Control → Machine Identities → `homelab-ops-ro` → revoke old Universal Auth Client Secret and issue a new one.
 2. Update `/var/lib/haytham-ops/infisical-ops.env` (`0600 homelab-ops`) and re-pack recovery bundle (`ops-bundle pack`).
 3. To rotate `id_ed25519_control`, regenerate in `/var/lib/haytham-ops/.ssh/`, authorize the new `.pub` key on `haytham` (`.2`) and active LXCs (never `CT 110`), and delete the old key from `/root/.ssh/authorized_keys` via Windows Break-Glass SSH.

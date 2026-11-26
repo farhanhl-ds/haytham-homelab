@@ -2,7 +2,7 @@
 <#
 .SYNOPSIS
     Hardens Windows Defender Firewall against inbound traffic from the VMware NAT
-    Control Node subnet (VMnet8), preventing a compromised devbox VM from reaching
+    Control Node subnet (VMnet8), preventing a compromised haytham-ctl VM from reaching
     Windows host services (SMB, RDP, WinRM, RPC, NetBIOS, or arbitrary host ports).
 
 .DESCRIPTION

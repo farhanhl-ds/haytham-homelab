@@ -14,25 +14,25 @@ retrievable: true
 
 ## 1. Purpose
 
-Configure the 4-layer zero-trust provisioning architecture (`ADR-008`) separating the Windows host PC, VMware Linux control node (`devbox`), unprivileged AI agent (`homelab-agent`), human-gated operator (`homelab-ops`), Zone 1 Immutable Infisical (`CT 110`), and Proxmox hypervisor guardrails — and recover `devbox` from failure or suspected compromise in **< 10 minutes**.
+Configure the 4-layer zero-trust provisioning architecture (`ADR-008`) separating the Windows host PC, VMware Linux control node (`haytham-ctl`), unprivileged AI agent (`homelab-agent`), human-gated operator (`homelab-ops`), Zone 1 Immutable Infisical (`CT 110`), and Proxmox hypervisor guardrails — and recover `haytham-ctl` from failure or suspected compromise in **< 10 minutes**.
 
 ## 2. When to Use
 
-- Initial hardening of a new VMware Ubuntu 24.04 control node (`devbox`).
+- Initial hardening of a new VMware Ubuntu 24.04 control node (`haytham-ctl`).
 - Locking or temporarily unlocking Zone 2 Proxmox RBAC during disaster recovery drills.
-- Wiping and rebuilding `devbox` after OS corruption or suspected AI agent / prompt-injection compromise.
+- Wiping and rebuilding `haytham-ctl` after OS corruption or suspected AI agent / prompt-injection compromise.
 
 ## 3. Prerequisites
 
 - Proxmox host `haytham` (`192.168.100.2`) online with Ubuntu 24.04 LXC template downloaded (`ADR-002`).
-- Separate **Windows-only Break-Glass & Backup-Pull SSH key** (`%USERPROFILE%\.ssh\id_ed25519`) authorized on `root@192.168.100.2` (NEVER copied to `devbox`).
-- Fresh Ubuntu 24.04 LTS VMware Workstation/Player VM (`devbox`) with repo cloned.
+- Separate **Windows-only Break-Glass & Backup-Pull SSH key** (`%USERPROFILE%\.ssh\id_ed25519`) authorized on `root@192.168.100.2` (NEVER copied to `haytham-ctl`).
+- Fresh Ubuntu 24.04 LTS VMware Workstation/Player VM (`haytham-ctl`) with repo cloned.
 
 ## 4. Steps
 
-### Step 1 — Isolate VMware, Harden Windows Firewall & Prepare Dedicated Devbox SSH Key (Layer 1)
+### Step 1 — Isolate VMware, Harden Windows Firewall & Prepare Dedicated haytham-ctl SSH Key (Layer 1)
 
-1. In **VMware Workstation/Player** VM Settings for `devbox` (Ubuntu Server 24.04 LTS, 2–4 vCPU, 4 GB RAM, 30 GB thin disk):
+1. In **VMware Workstation/Player** VM Settings for `haytham-ctl` (Ubuntu Server 24.04 LTS, 2–4 vCPU, 4 GB RAM, 30 GB thin disk):
    - **Network Adapter:** set to **NAT (`VMnet8`)** (not Bridged).
    - **Options → Shared Folders:** **Disabled**.
    - **Options → Guest Isolation:** uncheck **Enable drag and drop** and **Enable copy and paste**.
@@ -41,40 +41,40 @@ Configure the 4-layer zero-trust provisioning architecture (`ADR-008`) separatin
    ```powershell
    .\scripts\hardening\harden-windows-firewall.ps1
    ```
-3. On **Windows PC** (PowerShell), create a **dedicated** SSH keypair for Windows Terminal access to `devbox` (NEVER reuse your Windows Break-Glass key `id_ed25519`!) and add 3 ergonomic aliases to `%USERPROFILE%\.ssh\config`:
+3. On **Windows PC** (PowerShell), create a **dedicated** SSH keypair for Windows Terminal access to `haytham-ctl` (NEVER reuse your Windows Break-Glass key `id_ed25519`!) and add 3 ergonomic aliases to `%USERPROFILE%\.ssh\config`:
    ```powershell
-   ssh-keygen -t ed25519 -a 64 -C "windows-to-devbox" -f "$env:USERPROFILE\.ssh\id_ed25519_devbox"
+   ssh-keygen -t ed25519 -a 64 -C "windows-to-haytham-ctl" -f "$env:USERPROFILE\.ssh\id_ed25519_haytham_ctl"
    ```
    ```sshconfig
-   Host devbox
-       HostName <DEVBOX_VMNET8_IP>
+   Host haytham-ctl
+       HostName <HAYTHAM_CTL_VMNET8_IP>
        User farhan
-       IdentityFile ~/.ssh/id_ed25519_devbox
+       IdentityFile ~/.ssh/id_ed25519_haytham_ctl
        IdentitiesOnly yes
        ForwardAgent no
        ForwardX11 no
 
-   Host devbox-agent
-       HostName <DEVBOX_VMNET8_IP>
+   Host haytham-ctl-agent
+       HostName <HAYTHAM_CTL_VMNET8_IP>
        User farhan
-       IdentityFile ~/.ssh/id_ed25519_devbox
+       IdentityFile ~/.ssh/id_ed25519_haytham_ctl
        IdentitiesOnly yes
        ForwardAgent no
        ForwardX11 no
        RequestTTY force
        RemoteCommand sudo -iu homelab-agent bash -lc 'cd /srv/haytham-homelab && exec bash -l'
 
-   Host devbox-ops
-       HostName <DEVBOX_VMNET8_IP>
+   Host haytham-ctl-ops
+       HostName <HAYTHAM_CTL_VMNET8_IP>
        User farhan
-       IdentityFile ~/.ssh/id_ed25519_devbox
+       IdentityFile ~/.ssh/id_ed25519_haytham_ctl
        IdentitiesOnly yes
        ForwardAgent no
        ForwardX11 no
        RequestTTY force
        RemoteCommand sudo -iu homelab-ops
    ```
-   *(Daily workflow: open Windows Terminal Tab 1 with `ssh devbox-agent` for `agy`, Tab 2 with `ssh devbox-ops` for human-gated `ops-*` commands, and use `scp devbox:...` to copy encrypted `ops-bundle` archives off-host without Shared Folders.)*
+   *(Daily workflow: open Windows Terminal Tab 1 with `ssh haytham-ctl-agent` for `agy`, Tab 2 with `ssh haytham-ctl-ops` for human-gated `ops-*` commands, and use `scp haytham-ctl:...` to copy encrypted `ops-bundle` archives off-host without Shared Folders.)*
 
 ### Step 2 — Bootstrap Zone 1 Immutable Infisical (`CT 110` @ `.10`, Layer 2a)
 
@@ -94,14 +94,14 @@ Then from your **Windows browser**:
 
 ### Step 3 — Bootstrap Disposable Control Node & Capture Golden Snapshot (Layers 3 & 4)
 
-On **`devbox`** (Ubuntu Server 24.04) as human admin (`farhan`, via VMware Console):
+On **`haytham-ctl`** (Ubuntu Server 24.04) as human admin (`farhan`, via VMware Console):
 
 ```bash
-# 1. Install your Windows dedicated devbox PUBLIC key BEFORE bootstrap
+# 1. Install your Windows dedicated haytham-ctl PUBLIC key BEFORE bootstrap
 #    (PasswordAuthentication is disabled unconditionally by bootstrap-control-node.sh;
 #     NEVER put your Windows Break-Glass key here!)
 install -d -m 0700 ~/.ssh
-# Paste contents of %USERPROFILE%\.ssh\id_ed25519_devbox.pub into ~/.ssh/authorized_keys
+# Paste contents of %USERPROFILE%\.ssh\id_ed25519_haytham_ctl.pub into ~/.ssh/authorized_keys
 chmod 0600 ~/.ssh/authorized_keys
 
 # 2. Run control-node bootstrap (installs Terraform, Ansible, Infisical CLI,
@@ -109,17 +109,17 @@ chmod 0600 ~/.ssh/authorized_keys
 sudo ./scripts/control-node/bootstrap-control-node.sh
 ```
 
-> **CRITICAL:** Verify `ssh devbox` works from Windows Terminal, install the `agy` CLI binary globally (`/usr/local/bin/agy`, **without** logging in or placing any secrets in `/var/lib/haytham-ops/`), then shut down `devbox` and take a VMware Snapshot named **`clean-base`**.
+> **CRITICAL:** Verify `ssh haytham-ctl` works from Windows Terminal, install the `agy` CLI binary globally (`/usr/local/bin/agy`, **without** logging in or placing any secrets in `/var/lib/haytham-ops/`), then shut down `haytham-ctl` and take a VMware Snapshot named **`clean-base`**.
 
 ### Step 4 — Populate `/var/lib/haytham-ops/` & Pack Encrypted Recovery Bundle
 
-Switch to human operator `homelab-ops` on `devbox`:
+Switch to human operator `homelab-ops` on `haytham-ctl`:
 
 ```bash
 sudo -iu homelab-ops
 
 # 1. Generate revocable control-node SSH keypair
-ssh-keygen -t ed25519 -a 64 -N "" -C "homelab-ops@devbox" -f /var/lib/haytham-ops/.ssh/id_ed25519_control
+ssh-keygen -t ed25519 -a 64 -N "" -C "homelab-ops@haytham-ctl" -f /var/lib/haytham-ops/.ssh/id_ed25519_control
 chmod 0600 /var/lib/haytham-ops/.ssh/id_ed25519_control
 
 # 2. Place Windows Break-Glass .pub key (public key only!) for Terraform LXC injection
@@ -147,7 +147,7 @@ ops-bundle pack
 ### Step 5 — Provision Zones 2–4 & Lock Proxmox RBAC (Layer 2b)
 
 1. From Windows Break-Glass SSH on `haytham`, run `harden-pve-rbac.sh --init` to create pools (`homelab-immutable`, `homelab-protected`, `homelab-ephemeral`) and custom role `HomelabProtectedOps`.
-2. From `homelab-ops` on `devbox`, provision Zones 2–4:
+2. From `homelab-ops` on `haytham-ctl`, provision Zones 2–4:
    ```bash
    ops-tf-apply
    ops-ansible-apply host_devices.yml
@@ -178,13 +178,13 @@ ops-bundle pack
 
 ### Disposable Control Node Compromise / Rebuild Playbook (< 10 Minutes)
 
-If `devbox` breaks or you suspect prompt-injection / compromise:
+If `haytham-ctl` breaks or you suspect prompt-injection / compromise:
 
-1. **Power off `devbox` and revert VMware snapshot to `clean-base`** (or spin up a fresh Ubuntu 24.04 VM and run `bootstrap-control-node.sh`).
+1. **Power off `haytham-ctl` and revert VMware snapshot to `clean-base`** (or spin up a fresh Ubuntu 24.04 VM and run `bootstrap-control-node.sh`).
 2. **Revoke compromised credentials from Windows PC:**
-   - Remove the old `devbox` public key line from `/root/.ssh/authorized_keys` on `haytham` (`.2`) and active LXCs (`.20, .21, .30, .31, .32, .40, .41`).
+   - Remove the old `haytham-ctl` public key line from `/root/.ssh/authorized_keys` on `haytham` (`.2`) and active LXCs (`.20, .21, .30, .31, .32, .40, .41`).
    - In Infisical UI (`http://192.168.100.10:8080`), revoke/rotate `homelab-ops-ro` Universal Auth Client Secret (and rotate any secrets that `homelab-ops` could have read if compromise crossed into `homelab-ops`).
-3. **Restore encrypted bundle inside clean `devbox`:**
+3. **Restore encrypted bundle inside clean `haytham-ctl`:**
    ```bash
    sudo -iu homelab-ops
    ops-bundle unpack /path/to/haytham-control-bundle-*.tar.age
@@ -216,12 +216,12 @@ nc -zw2 192.168.100.65 22
 
 From **Windows Terminal** — hardened `sshd` checks (must ALL fail):
 ```powershell
-ssh root@<DEVBOX_VMNET8_IP>                                    # PermitRootLogin no
-ssh homelab-ops@<DEVBOX_VMNET8_IP>                             # Not in AllowUsers
-ssh homelab-agent@<DEVBOX_VMNET8_IP>                           # Not in AllowUsers
-ssh -o PubkeyAuthentication=no farhan@<DEVBOX_VMNET8_IP>       # PasswordAuthentication no
-ssh -A devbox "ssh-add -l"                                     # AllowAgentForwarding no
-ssh -L 9999:192.168.100.10:8080 devbox                         # AllowTcpForwarding no
+ssh root@<HAYTHAM_CTL_VMNET8_IP>                                    # PermitRootLogin no
+ssh homelab-ops@<HAYTHAM_CTL_VMNET8_IP>                             # Not in AllowUsers
+ssh homelab-agent@<HAYTHAM_CTL_VMNET8_IP>                           # Not in AllowUsers
+ssh -o PubkeyAuthentication=no farhan@<HAYTHAM_CTL_VMNET8_IP>       # PasswordAuthentication no
+ssh -A haytham-ctl "ssh-add -l"                                     # AllowAgentForwarding no
+ssh -L 9999:192.168.100.10:8080 haytham-ctl                         # AllowTcpForwarding no
 ```
 
 ### Positive Functional Tests (Must ALL Succeed)
