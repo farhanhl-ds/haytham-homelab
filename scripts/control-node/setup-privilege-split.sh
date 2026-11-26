@@ -139,6 +139,10 @@ ${AGENT_USER} ALL=(${OPS_USER}) NOPASSWD: \\
     ${WRAPPER_DST}/ops-tf-plan, \\
     ${WRAPPER_DST}/ops-ansible-check *, \\
     ${WRAPPER_DST}/ops-health-check
+
+# Allow human admin to drop privileges into unprivileged ${AGENT_USER} without a password
+# (used by Windows Terminal alias 'ssh haytham-ctl-agent'; ${OPS_USER} & root remain password-gated)
+${HUMAN_USER} ALL=(${AGENT_USER}) NOPASSWD: ALL
 EOF
 
 visudo -cf "${TMP_SUDOERS}"
