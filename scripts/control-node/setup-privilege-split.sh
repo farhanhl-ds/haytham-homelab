@@ -134,7 +134,7 @@ cat > "${TMP_SUDOERS}" <<EOF
 # Mutating & secret operations (ops-tf-apply, ops-ansible-apply, ops-bundle) are
 # deliberately EXCLUDED and require human login via 'sudo -iu ${OPS_USER}'.
 
-Defaults:${AGENT_USER} !requiretty, env_reset, secure_path="/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
+Defaults:${AGENT_USER} env_reset, secure_path="/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
 ${AGENT_USER} ALL=(${OPS_USER}) NOPASSWD: \\
     ${WRAPPER_DST}/ops-tf-plan, \\
     ${WRAPPER_DST}/ops-ansible-check *, \\
