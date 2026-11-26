@@ -30,17 +30,51 @@ Configure the 4-layer zero-trust provisioning architecture (`ADR-008`) separatin
 
 ## 4. Steps
 
-### Step 1 — Isolate VMware & Harden Windows Host Firewall (Layer 1)
+### Step 1 — Isolate VMware, Harden Windows Firewall & Prepare Dedicated Devbox SSH Key (Layer 1)
 
-1. In **VMware Workstation/Player** VM Settings for `devbox`:
+1. In **VMware Workstation/Player** VM Settings for `devbox` (Ubuntu Server 24.04 LTS, 2–4 vCPU, 4 GB RAM, 30 GB thin disk):
    - **Network Adapter:** set to **NAT (`VMnet8`)** (not Bridged).
    - **Options → Shared Folders:** **Disabled**.
-   - **Options → Guest Isolation:** uncheck **Enable drag and drop** and **Enable copy and paste** (or restrict to Host→Guest only).
-   - **USB Controller:** disable **Automatically connect new USB devices** (or remove USB controller).
+   - **Options → Guest Isolation:** uncheck **Enable drag and drop** and **Enable copy and paste**.
+   - **USB Controller:** remove USB controller (or disable **Automatically connect new USB devices**).
 2. On **Windows PC** (PowerShell as Administrator), block all inbound connections from `VMnet8`:
    ```powershell
    .\scripts\hardening\harden-windows-firewall.ps1
    ```
+3. On **Windows PC** (PowerShell), create a **dedicated** SSH keypair for Windows Terminal access to `devbox` (NEVER reuse your Windows Break-Glass key `id_ed25519`!) and add 3 ergonomic aliases to `%USERPROFILE%\.ssh\config`:
+   ```powershell
+   ssh-keygen -t ed25519 -a 64 -C "windows-to-devbox" -f "$env:USERPROFILE\.ssh\id_ed25519_devbox"
+   ```
+   ```sshconfig
+   Host devbox
+       HostName <DEVBOX_VMNET8_IP>
+       User farhan
+       IdentityFile ~/.ssh/id_ed25519_devbox
+       IdentitiesOnly yes
+       ForwardAgent no
+       ForwardX11 no
+
+   Host devbox-agent
+       HostName <DEVBOX_VMNET8_IP>
+       User farhan
+       IdentityFile ~/.ssh/id_ed25519_devbox
+       IdentitiesOnly yes
+       ForwardAgent no
+       ForwardX11 no
+       RequestTTY force
+       RemoteCommand sudo -iu homelab-agent bash -lc 'cd /srv/haytham-homelab && exec bash -l'
+
+   Host devbox-ops
+       HostName <DEVBOX_VMNET8_IP>
+       User farhan
+       IdentityFile ~/.ssh/id_ed25519_devbox
+       IdentitiesOnly yes
+       ForwardAgent no
+       ForwardX11 no
+       RequestTTY force
+       RemoteCommand sudo -iu homelab-ops
+   ```
+   *(Daily workflow: open Windows Terminal Tab 1 with `ssh devbox-agent` for `agy`, Tab 2 with `ssh devbox-ops` for human-gated `ops-*` commands, and use `scp devbox:...` to copy encrypted `ops-bundle` archives off-host without Shared Folders.)*
 
 ### Step 2 — Bootstrap Zone 1 Immutable Infisical (`CT 110` @ `.10`, Layer 2a)
 
@@ -60,13 +94,22 @@ Then from your **Windows browser**:
 
 ### Step 3 — Bootstrap Disposable Control Node & Capture Golden Snapshot (Layers 3 & 4)
 
-On **`devbox`** (Ubuntu 24.04) as human admin (`farhan`):
+On **`devbox`** (Ubuntu Server 24.04) as human admin (`farhan`, via VMware Console):
 
 ```bash
+# 1. Install your Windows dedicated devbox PUBLIC key BEFORE bootstrap
+#    (PasswordAuthentication is disabled unconditionally by bootstrap-control-node.sh;
+#     NEVER put your Windows Break-Glass key here!)
+install -d -m 0700 ~/.ssh
+# Paste contents of %USERPROFILE%\.ssh\id_ed25519_devbox.pub into ~/.ssh/authorized_keys
+chmod 0600 ~/.ssh/authorized_keys
+
+# 2. Run control-node bootstrap (installs Terraform, Ansible, Infisical CLI,
+#    privilege split, hardened sshd, TIOCSTI sysctl, UFW + kernel UID LAN-block)
 sudo ./scripts/control-node/bootstrap-control-node.sh
 ```
 
-> **CRITICAL:** Immediately after `bootstrap-control-node.sh` succeeds (BEFORE placing any secrets into `/var/lib/haytham-ops/`), shut down/pause `devbox` and take a VMware Snapshot named **`clean-base`**.
+> **CRITICAL:** Verify `ssh devbox` works from Windows Terminal, install the `agy` CLI binary globally (`/usr/local/bin/agy`, **without** logging in or placing any secrets in `/var/lib/haytham-ops/`), then shut down `devbox` and take a VMware Snapshot named **`clean-base`**.
 
 ### Step 4 — Populate `/var/lib/haytham-ops/` & Pack Encrypted Recovery Bundle
 
@@ -164,10 +207,21 @@ sudo -u homelab-agent sudo -u homelab-ops /usr/local/libexec/haytham-ops/ops-ans
 sudo -u homelab-agent curl -m 2 http://192.168.100.10:8080/api/status
 sudo -u homelab-agent nc -zw2 192.168.100.2 8006
 
-# As homelab-ops — UFW egress block on Router, Windows PC, and Open Reserve (.60-.99)
+# As homelab-ops — UFW egress block on Router, Windows PC, VMnet8 host .1, and Open Reserve (.60-.99)
 nc -zw2 192.168.100.1 80
+nc -zw2 <VMNET8_HOST_IP> 445
 nc -zw2 <WINDOWS_PC_LAN_IP> 445
 nc -zw2 192.168.100.65 22
+```
+
+From **Windows Terminal** — hardened `sshd` checks (must ALL fail):
+```powershell
+ssh root@<DEVBOX_VMNET8_IP>                                    # PermitRootLogin no
+ssh homelab-ops@<DEVBOX_VMNET8_IP>                             # Not in AllowUsers
+ssh homelab-agent@<DEVBOX_VMNET8_IP>                           # Not in AllowUsers
+ssh -o PubkeyAuthentication=no farhan@<DEVBOX_VMNET8_IP>       # PasswordAuthentication no
+ssh -A devbox "ssh-add -l"                                     # AllowAgentForwarding no
+ssh -L 9999:192.168.100.10:8080 devbox                         # AllowTcpForwarding no
 ```
 
 ### Positive Functional Tests (Must ALL Succeed)

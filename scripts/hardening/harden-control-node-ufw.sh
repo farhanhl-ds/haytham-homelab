@@ -3,18 +3,21 @@ set -euo pipefail
 
 # Layer 1 Firewall Hardening for Disposable Control Node (`devbox`)
 #
-# Enforces two complementary egress boundaries:
+# Enforces two complementary boundaries:
 #   1. UFW default-deny incoming & outgoing:
-#        - Allows ONLY active/deferred Security-Zone homelab endpoints
+#        - Inbound: ALLOWS ONLY TCP/22 from the Windows host VMnet8 IP (/32) so
+#          Windows Terminal can initiate unidirectional SSH/SCP into `devbox`.
+#        - Outbound: ALLOWS ONLY active/deferred Security-Zone homelab endpoints
 #          (.2 Proxmox, .10 Zone 1 Infisical, .20-.23 Zone 2, .30-.33 Zone 3,
 #           .40-.42 Zone 4) on minimal required ports.
 #        - Explicitly DENIES ALL RFC1918 / link-local ranges BEFORE broad
 #          public internet rules (53/80/443/123), blocking Router .1, Windows PC,
 #          VMnet8 host .1, Zone 5 (.50-.59), Open Reserve (.60-.99), and DHCP (.100-.254).
 #   2. Kernel UID-based LAN lockdown (`haytham-agent-egress.service`):
-#        - Blocks UID `homelab-agent` from initiating ANY direct connection to
-#          RFC1918/link-local networks. The AI agent can interact with the homelab
-#          ONLY through the 3 audited `sudo -u homelab-ops` read-only wrappers.
+#        - Unconditionally blocks UID `homelab-agent` from contacting ANY
+#          RFC1918/link-local IP (zero conntrack exceptions). The AI agent can
+#          interact with the homelab ONLY through the 3 audited `sudo -u homelab-ops`
+#          read-only wrappers.
 #
 # Run as root on `devbox` (Ubuntu 24.04).
 
@@ -51,10 +54,39 @@ detect_vmnet_dns() {
 
 VMNET_DNS_IP="${VMNET_DNS_IP:-$(detect_vmnet_dns)}"
 
+# Detect Windows host VMnet8 adapter IP (.1 of VMware NAT default gateway /24, e.g. 192.168.x.2 -> 192.168.x.1)
+detect_vmnet_host() {
+  local gw_ip=""
+  if command -v ip >/dev/null 2>&1; then
+    gw_ip="$(ip -4 route show default 2>/dev/null | awk '/^default via / {print $3; exit}' || true)"
+  fi
+  # Only allow VMware NAT subnets outside the homelab LAN (192.168.100.0/24) and loopback
+  if [[ "$gw_ip" =~ ^(10\.|172\.(1[6-9]|2[0-9]|3[0-1])\.|192\.168\.) ]] \
+     && [[ "$gw_ip" != 192.168.100.* ]] \
+     && [[ "$gw_ip" != 127.* ]]; then
+    echo "${gw_ip%.*}.1"
+  fi
+}
+
+ALLOW_VMNET_SSH="${ALLOW_VMNET_SSH:-1}"
+VMNET_HOST_IP="${VMNET_HOST_IP:-$(detect_vmnet_host)}"
+
 echo "[INFO] Resetting UFW to strict default-deny incoming & outgoing..."
 ufw --force reset >/dev/null
 ufw default deny incoming
 ufw default deny outgoing
+
+# ------------------------------------------------------------------
+# 0. Explicit INBOUND ALLOW — Windows Terminal SSH via VMnet8 ONLY
+#    Unidirectional: Windows initiates TCP/22 -> devbox; devbox -> Windows
+#    NEW connections remain 100% blocked by UFW egress & Windows Firewall.
+# ------------------------------------------------------------------
+if [[ "${ALLOW_VMNET_SSH}" == "1" && -n "$VMNET_HOST_IP" ]]; then
+  echo "[INFO] Allowing inbound SSH (22/tcp) ONLY from Windows VMnet8 host ${VMNET_HOST_IP}/32"
+  ufw allow in proto tcp from "${VMNET_HOST_IP}/32" to any port 22 comment "Windows Terminal SSH via VMnet8"
+else
+  echo "[WARN] VMnet8 host IP not detected (bridged mode or ALLOW_VMNET_SSH=0); inbound SSH remains blocked."
+fi
 
 # ------------------------------------------------------------------
 # 1. Explicit ALLOW rules — Homelab Management Plane ONLY

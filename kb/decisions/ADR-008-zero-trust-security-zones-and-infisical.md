@@ -38,15 +38,19 @@ Every Proxmox guest (both VMs and LXCs) obeys `ID = 100 + last_octet`, grouped b
 
 ### 2. Layer 1 — Windows PC & VMware Hard Boundary + Egress Lockdown
 
-- `devbox` runs on **VMware NAT (`VMnet8`)** with Shared Folders, Drag & Drop, USB auto-connect, and Guest→Host Clipboard disabled.
-- Windows Defender Firewall (`scripts/hardening/harden-windows-firewall.ps1`) blocks all inbound connections from the `VMnet8` subnet.
-- `devbox` UFW (`scripts/hardening/harden-control-node-ufw.sh`) enforces default-deny egress, allowing only `.2` (`22, 8006`), `.10` (`8080`), `.30` (`22, 53`), active/deferred Zone 2–4 IPs (`22, 443`), and public internet HTTPS/DNS/NTP — explicitly denying all RFC1918 ranges (Router `.1`, Windows PC, Reserve `.50–.99`, DHCP `.100–.254`) before broad internet rules.
-- A persistent kernel UID rule (`haytham-agent-egress.service`) blocks `homelab-agent` from contacting `192.168.0.0/16` directly.
+- `devbox` runs headless on **VMware NAT (`VMnet8`)** with Shared Folders, Drag & Drop, Copy & Paste, and USB auto-connect completely disabled.
+- Windows Defender Firewall (`scripts/hardening/harden-windows-firewall.ps1`) blocks all inbound connections initiated from the `VMnet8` subnet.
+- Daily operator access uses **unidirectional Windows-initiated SSH** from Windows Terminal over `VMnet8`: `devbox` UFW allows inbound `22/tcp` **only** from `VMNET_HOST_IP/32` (`192.168.x.1`), while `sshd` (`/etc/ssh/sshd_config.d/01-haytham-hardening.conf`) restricts login to `AllowUsers farhan`, enforces `PasswordAuthentication no` unconditionally, disables all forwarding (`AllowAgentForwarding no`, `AllowTcpForwarding no`, `X11Forwarding no`, `PermitTunnel no`), and sets `dev.tty.legacy_tiocsti = 0`.
+- `devbox` UFW (`scripts/hardening/harden-control-node-ufw.sh`) enforces default-deny egress, allowing only `.2` (`22, 8006`), `.10` (`8080`), `.30` (`22, 53`), active/deferred Zone 2–4 IPs (`22, 443`), and public internet HTTPS/DNS/NTP — explicitly denying all RFC1918 ranges (Router `.1`, Windows PC, `VMnet8` host `.1`, Reserve `.50–.99`, DHCP `.100–.254`) before broad internet rules.
+- A persistent kernel UID rule (`haytham-agent-egress.service`) unconditionally blocks `homelab-agent` from contacting `192.168.0.0/16` directly (zero conntrack exceptions).
 
-### 3. Layer 2 — Hypervisor Guardrails & Dual SSH Keys
+### 3. Layer 2 — Hypervisor Guardrails & Segregated SSH Keys
 
 - `scripts/proxmox/harden-pve-rbac.sh` strips global `PVEVMAdmin` from `/` on `terraform@pve`, scoping `PVEVMAdmin` strictly to `/pool/homelab-ephemeral`, `HomelabProtectedOps` to `/pool/homelab-protected`, and zero ACL on Zone 0 VMs and Zone 1 (`CT 110`).
-- Dual SSH public keys: `devbox` uses a revocable `id_ed25519_control` key (excluded from `CT 110`); the Windows PC holds a separate Break-Glass + Backup-Pull key (`scripts/pull-homelab-backups.bat`) so off-host backups and emergency access survive control-node compromise.
+- Three segregated SSH keypairs:
+  1. **Windows Break-Glass + Backup-Pull key** (`%USERPROFILE%\.ssh\id_ed25519`): accesses Proxmox `.2` and Zone 1 `CT 110` (`scripts/pull-homelab-backups.bat`); **never** copied to or used against `devbox`.
+  2. **Windows Devbox Terminal key** (`%USERPROFILE%\.ssh\id_ed25519_devbox`): used exclusively from Windows Terminal to SSH/SCP into `devbox` (`farhan`) over `VMnet8`.
+  3. **Revocable Control-Node key** (`/var/lib/haytham-ops/.ssh/id_ed25519_control`): generated on `devbox`, excluded from `CT 110`, and automatically rotated on every `ops-bundle unpack`.
 
 ### 4. Layer 3 — OS Privilege Split & RAM-Only Runtime Secrets
 
