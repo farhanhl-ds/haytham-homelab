@@ -4,7 +4,7 @@ set -euo pipefail
 # Audited Read-Only Wrapper — Terraform Validate & Plan
 # Callable by: homelab-agent (via NOPASSWD sudo as homelab-ops) or homelab-ops.
 
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+SCRIPT_DIR="$(cd "$(dirname "$(readlink -f "${BASH_SOURCE[0]}")")" && pwd)"
 # shellcheck source=_ops-infisical-lib.sh
 source "${SCRIPT_DIR}/_ops-infisical-lib.sh"
 

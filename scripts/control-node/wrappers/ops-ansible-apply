@@ -32,7 +32,7 @@ fi
 PLAYBOOK="$1"
 validate_playbook_arg "${PLAYBOOK}"
 
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+SCRIPT_DIR="$(cd "$(dirname "$(readlink -f "${BASH_SOURCE[0]}")")" && pwd)"
 # shellcheck source=_ops-infisical-lib.sh
 source "${SCRIPT_DIR}/_ops-infisical-lib.sh"
 

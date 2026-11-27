@@ -5,7 +5,7 @@ set -euo pipefail
 # Callable by: homelab-agent (via NOPASSWD sudo as homelab-ops) or homelab-ops.
 # Runs ONLY fixed, non-mutating status checks across Zones 0-4.
 
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+SCRIPT_DIR="$(cd "$(dirname "$(readlink -f "${BASH_SOURCE[0]}")")" && pwd)"
 # shellcheck source=_ops-infisical-lib.sh
 source "${SCRIPT_DIR}/_ops-infisical-lib.sh"
 

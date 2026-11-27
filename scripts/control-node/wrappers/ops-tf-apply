@@ -4,7 +4,7 @@ set -euo pipefail
 # Human-Only Mutating Wrapper — Terraform Apply (-parallelism=1)
 # NEVER granted to homelab-agent in sudoers. Requires interactive human TTY.
 
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+SCRIPT_DIR="$(cd "$(dirname "$(readlink -f "${BASH_SOURCE[0]}")")" && pwd)"
 # shellcheck source=_ops-infisical-lib.sh
 source "${SCRIPT_DIR}/_ops-infisical-lib.sh"
 
