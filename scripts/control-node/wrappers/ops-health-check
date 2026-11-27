@@ -56,6 +56,6 @@ ssh "${SSH_OPTS[@]}" root@192.168.100.41 "docker ps --format 'table {{.Names}}\t
 
 echo ""
 echo "=== [Zone 0] Proxmox haytham Backup Timers & Restic Snapshots (192.168.100.2) ==="
-ssh "${SSH_OPTS[@]}" root@192.168.100.2 "systemctl list-timers 'homelab-*' --no-pager && restic -r /var/backups/homelab/restic --password-file /etc/homelab-backup/restic.pass snapshots --compact --last 5" || echo "[FAIL] Proxmox backup check failed"
+ssh "${SSH_OPTS[@]}" root@192.168.100.2 "systemctl list-timers 'homelab-*' --no-pager && restic -r /var/backups/homelab/restic --password-file /etc/homelab-backup/restic.pass snapshots --compact --latest 5" || echo "[FAIL] Proxmox backup check failed"
 
 audit_log "ops-health-check" "ok"

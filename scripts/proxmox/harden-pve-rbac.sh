@@ -69,7 +69,7 @@ cmd_init() {
   ensure_pool "$POOL_PROTECTED" "Zone 2 Protected Data (Vaultwarden 120, Immich 121; protection=1, NO destroy)"
   ensure_pool "$POOL_EPHEMERAL" "Zones 3-5 Ephemeral Infra/Apps/Ops (130-159; freely rebuildable)"
 
-  if pveum role list 2>/dev/null | grep -q "${ROLE_PROTECTED}"; then
+  if pvesh get "/access/roles/${ROLE_PROTECTED}" >/dev/null 2>&1; then
     pveum role modify "${ROLE_PROTECTED}" -privs "${ROLE_PRIVS}"
   else
     pveum role add "${ROLE_PROTECTED}" -privs "${ROLE_PRIVS}"
