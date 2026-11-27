@@ -94,17 +94,36 @@ infisical_get_token() {
     --silent
 }
 
+# Fetch secrets for a folder path as JSON [{key, value}] via Infisical REST API v3
+# (/api/v3/secrets/raw). Works on both CT 110 (v0.104.0-postgres) and newer servers,
+# avoiding Infisical CLI v0.45+ /api/v4/secrets route skew while keeping the bearer
+# token out of process argv (`curl -K -`).
+infisical_fetch_path_json() {
+  local token="$1"
+  local secret_path="$2"
+  local api_base="${INFISICAL_API_URL%/}"
+  local resp
+
+  [[ "${api_base}" == */api ]] || api_base="${api_base}/api"
+
+  resp="$(printf 'header = "Authorization: Bearer %s"\n' "${token}" \
+    | curl -fsS --get -K - \
+      --data-urlencode "workspaceId=${INFISICAL_PROJECT_ID}" \
+      --data-urlencode "environment=${INFISICAL_ENV}" \
+      --data-urlencode "secretPath=${secret_path}" \
+      --data-urlencode "expandSecretReferences=true" \
+      --data-urlencode "include_imports=true" \
+      "${api_base}/v3/secrets/raw")"
+
+  printf '%s' "${resp}" | jq -c '(.secrets // []) | map({key: .secretKey, value: .secretValue})'
+}
+
 # Exports ONLY allowlisted Terraform secrets (/terraform) into memory env vars
 infisical_export_terraform_env() {
   local token raw_json
+  load_infisical_config
   token="$(infisical_get_token)"
-  raw_json="$(infisical export \
-    --domain="${INFISICAL_API_URL}" \
-    --token="${token}" \
-    --projectId="${INFISICAL_PROJECT_ID}" \
-    --env="${INFISICAL_ENV}" \
-    --path="/terraform" \
-    --format=json)"
+  raw_json="$(infisical_fetch_path_json "${token}" "/terraform")"
 
   TF_VAR_pve_api_token="$(printf '%s' "${raw_json}" | jq -r '.[] | select(.key == "TF_VAR_pve_api_token") | .value' | head -n 1)"
   TF_VAR_ct_root_password="$(printf '%s' "${raw_json}" | jq -r '.[] | select(.key == "TF_VAR_ct_root_password") | .value' | head -n 1)"
@@ -121,17 +140,12 @@ infisical_export_terraform_env() {
 infisical_export_ansible_shm() {
   local paths=("$@")
   local token merged_json path_json p
+  load_infisical_config
   token="$(infisical_get_token)"
   merged_json="{}"
 
   for p in "${paths[@]}"; do
-    path_json="$(infisical export \
-      --domain="${INFISICAL_API_URL}" \
-      --token="${token}" \
-      --projectId="${INFISICAL_PROJECT_ID}" \
-      --env="${INFISICAL_ENV}" \
-      --path="${p}" \
-      --format=json)"
+    path_json="$(infisical_fetch_path_json "${token}" "${p}")"
     merged_json="$(printf '%s\n%s\n' "${merged_json}" "${path_json}" \
       | jq -s '.[0] + ((.[1] // []) | map({(.key): .value}) | add // {})')"
   done
