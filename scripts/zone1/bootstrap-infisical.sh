@@ -163,6 +163,8 @@ services:
     image: redis:7-alpine
     container_name: infisical_redis
     restart: unless-stopped
+    environment:
+      REDISCLI_AUTH: \${REDIS_PASSWORD}
     command:
       - redis-server
       - --requirepass
@@ -170,14 +172,25 @@ services:
       - --maxmemory
       - 64mb
       - --maxmemory-policy
-      - allkeys-lru
+      - noeviction
     volumes:
       - redis_data:/data
     healthcheck:
-      test: ["CMD-SHELL", "redis-cli -a \${REDIS_PASSWORD} ping | grep -q PONG"]
+      test: ["CMD", "redis-cli", "ping"]
       interval: 10s
       timeout: 5s
       retries: 10
+
+  db-migration:
+    image: ${INFISICAL_IMAGE}
+    container_name: infisical_db_migration
+    restart: "no"
+    depends_on:
+      db:
+        condition: service_healthy
+    env_file:
+      - /opt/infisical/.env
+    command: ["npm", "run", "migration:latest"]
 
   backend:
     image: ${INFISICAL_IMAGE}
@@ -188,6 +201,8 @@ services:
         condition: service_healthy
       redis:
         condition: service_healthy
+      db-migration:
+        condition: service_completed_successfully
     env_file:
       - /opt/infisical/.env
     ports:
@@ -241,6 +256,7 @@ NEXT STEPS (HUMAN OPERATOR — FROM WINDOWS PC)
 5. CRITICAL DR STEP: Record ENCRYPTION_KEY and AUTH_SECRET from
    \`pct exec ${CTID} -- grep -E '^(ENCRYPTION_KEY|AUTH_SECRET)=' /opt/infisical/.env\`
    into your offline emergency sheet / Windows KeePassXC (NEVER paste in chat!).
-6. Run scripts/proxmox/harden-pve-rbac.sh --init && --lock on haytham.
+6. Run scripts/proxmox/harden-pve-rbac.sh --init on haytham
+   (run --lock immediately AFTER initial Zone 2 Terraform creation).
 ====================================================================
 NEXTEOF

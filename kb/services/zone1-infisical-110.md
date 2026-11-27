@@ -27,7 +27,7 @@ Self-hosted, immutable machine secrets manager serving as the single source of t
 | CPU / RAM / Swap | 2 cores / `1536 MB` / `1024 MB` (tuned lean for 8 GB host: ~600–900 MB RSS idle) |
 | Disk | `8 GB` on `local-lvm` |
 | DNS (Container) | `1.1.1.1` (avoids circular dependency on Zone 3 Pi-hole `.30`) |
-| Stack | Self-contained Docker Compose: `infisical` (`NODE_OPTIONS=--max-old-space-size=512`), `postgres:16-alpine` (`shared_buffers=64MB`), `redis:7-alpine` (`maxmemory 64mb`) |
+| Stack | Self-contained Docker Compose: `infisical` (`v0.104.0-postgres`, `NODE_OPTIONS=--max-old-space-size=512`), `db-migration` (`npm run migration:latest`), `postgres:16-alpine` (`shared_buffers=64MB`), `redis:7-alpine` (`maxmemory 64mb`, `maxmemory-policy noeviction`) |
 | Direct API URL | `http://192.168.100.10:8080` (used by `homelab-ops` wrappers so automation works even when Pi-hole/NPM are down) |
 | Optional NPM Host | `https://infisical.haytham.internal → 192.168.100.10:8080` (WebSockets ON) |
 | SSH Access | **Windows Break-Glass key ONLY** (`haytham-ctl` control node has zero SSH access to CT `110`) |
@@ -80,6 +80,7 @@ pct exec 110 -- docker ps
 - **Never change `ENCRYPTION_KEY` after storing secrets:** Doing so renders existing encrypted database rows unreadable.
 - **Do not add `CT 110` to `terraform/locals.tf`:** Importing `CT 110` into Terraform would expose it to `terraform destroy`.
 - **Direct IP over DNS in CLI:** Always keep `INFISICAL_API_URL=http://192.168.100.10:8080/api` in `infisical-ops.env` so Terraform and Ansible continue working while Pi-hole (`130`) or NPM (`131`) are being rebuilt.
+- **Explicit `db-migration` + Redis `noeviction`:** `infisical/infisical:v0.104.0-postgres` predates auto-migrations on startup (added Feb 2025), so Compose must run the one-shot `db-migration` (`npm run migration:latest`) service before `backend`, and Redis must use `--maxmemory-policy noeviction` for BullMQ queues.
 
 ## 7. FAQ
 

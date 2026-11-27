@@ -163,7 +163,11 @@ cmd_status() {
   echo "=== Resource Pools ==="
   for pool in "$POOL_IMMUTABLE" "$POOL_PROTECTED" "$POOL_EPHEMERAL"; do
     echo "--- Pool: ${pool} ---"
-    pvesh get "/pools/${pool}" 2>/dev/null | grep -E 'vmid|type|status' || echo "  (not created yet)"
+    if pool_out="$(pvesh get "/pools/${pool}" 2>/dev/null)"; then
+      printf '%s\n' "$pool_out" | grep -E 'vmid|type|status' || echo "  (created, empty)"
+    else
+      echo "  (not created yet)"
+    fi
   done
   echo ""
   echo "=== Hypervisor Protection Flags ==="
