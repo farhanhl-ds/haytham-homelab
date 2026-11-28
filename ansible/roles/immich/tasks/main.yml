@@ -8,7 +8,7 @@
   ansible.builtin.debug:
     msg: >-
       /dev/dri/renderD128 not detected in CT 121. Run `ops-ansible-apply host_devices.yml`
-      before enabling Intel Quick Sync hardware transcoding in Immich Admin UI.
+      before enabling VAAPI / Intel Quick Sync hardware transcoding in Immich Admin UI.
   when: not dri_device.stat.exists
 
 - name: Guard against unset CHANGEME database password
