@@ -131,16 +131,16 @@ set "T1_SCRIPT=%TEMP%\haytham-track1-%RANDOM%-%RANDOM%.tmp"
 >> "%T1_SCRIPT%" echo         return
 >> "%T1_SCRIPT%" echo     last_t = now
 >> "%T1_SCRIPT%" echo     pct = 100.0 if total_bytes == 0 else min(100.0, done_bytes * 100.0 / total_bytes)
->> "%T1_SCRIPT%" echo     fill = int(pct * 16 / 100)
->> "%T1_SCRIPT%" echo     bar = "#" * fill + "-" * (16 - fill)
+>> "%T1_SCRIPT%" echo     fill = int(pct * 12 / 100)
+>> "%T1_SCRIPT%" echo     bar = "#" * fill + "-" * (12 - fill)
 >> "%T1_SCRIPT%" echo     el = max(0.001, now - t0)
 >> "%T1_SCRIPT%" echo     spd = done_bytes / el
 >> "%T1_SCRIPT%" echo     if final:
->> "%T1_SCRIPT%" echo         msg = f"[{bar}] 100.0%% {len(files)}/{len(files)} {hsz(done_bytes)}/{hsz(total_bytes)} {hsz(spd)}/s done ({htm(el)})"
+>> "%T1_SCRIPT%" echo         msg = f"[{bar}] 100.0%% | {len(files)}/{len(files)} | {hsz(done_bytes)}/{hsz(total_bytes)} | {hsz(spd)}/s | done ({htm(el)})"
 >> "%T1_SCRIPT%" echo     else:
 >> "%T1_SCRIPT%" echo         eta_s = htm((total_bytes - done_bytes) / spd) if spd ^> 0 else "--:--"
->> "%T1_SCRIPT%" echo         pre = f"[{bar}] {pct:5.1f}%% {idx}/{len(files)} {hsz(done_bytes)}/{hsz(total_bytes)} {hsz(spd)}/s ETA {eta_s} "
->> "%T1_SCRIPT%" echo         rem = 78 - len(pre)
+>> "%T1_SCRIPT%" echo         pre = f"[{bar}] {pct:5.1f}%% | {idx}/{len(files)} | {hsz(done_bytes)}/{hsz(total_bytes)} | {hsz(spd)}/s | ETA {eta_s} | "
+>> "%T1_SCRIPT%" echo         rem = 118 - len(pre)
 >> "%T1_SCRIPT%" echo         nm = name if len(name) ^<= rem else (name[:max(1, rem - 3)] + "...")
 >> "%T1_SCRIPT%" echo         msg = pre + (nm if rem ^> 3 else "")
 >> "%T1_SCRIPT%" echo     pad = " " * max(0, last_len - len(msg))
@@ -161,7 +161,7 @@ set "T1_SCRIPT=%TEMP%\haytham-track1-%RANDOM%-%RANDOM%.tmp"
 >> "%T1_SCRIPT%" echo     for fp, rel in dirs:
 >> "%T1_SCRIPT%" echo         tf.add(fp, arcname=rel, recursive=False)
 >> "%T1_SCRIPT%" echo     for i, (fp, rel, _) in enumerate(files, 1):
->> "%T1_SCRIPT%" echo         nm = os.path.basename(rel)
+>> "%T1_SCRIPT%" echo         nm = rel
 >> "%T1_SCRIPT%" echo         show(i, nm)
 >> "%T1_SCRIPT%" echo         with open(fp, "rb") as f:
 >> "%T1_SCRIPT%" echo             ti = tf.gettarinfo(arcname=rel, fileobj=f)
@@ -265,16 +265,16 @@ echo Scanning local backup folder "%PHOTOS_BACKUP_DIR%"...
 >> "%PAYLOAD_FILE%" echo         return
 >> "%PAYLOAD_FILE%" echo     last_t = now
 >> "%PAYLOAD_FILE%" echo     pct = 100.0 if total_bytes == 0 else min(100.0, done_bytes * 100.0 / total_bytes)
->> "%PAYLOAD_FILE%" echo     fill = int(pct * 16 / 100)
->> "%PAYLOAD_FILE%" echo     bar = "#" * fill + "-" * (16 - fill)
+>> "%PAYLOAD_FILE%" echo     fill = int(pct * 12 / 100)
+>> "%PAYLOAD_FILE%" echo     bar = "#" * fill + "-" * (12 - fill)
 >> "%PAYLOAD_FILE%" echo     el = max(0.001, now - t0)
 >> "%PAYLOAD_FILE%" echo     spd = done_bytes / el
 >> "%PAYLOAD_FILE%" echo     if final:
->> "%PAYLOAD_FILE%" echo         msg = f"[{bar}] 100.0%% {len(need)}/{len(need)} {hsz(done_bytes)}/{hsz(total_bytes)} {hsz(spd)}/s done ({htm(el)})"
+>> "%PAYLOAD_FILE%" echo         msg = f"[{bar}] 100.0%% | {len(need)}/{len(need)} | {hsz(done_bytes)}/{hsz(total_bytes)} | {hsz(spd)}/s | done ({htm(el)})"
 >> "%PAYLOAD_FILE%" echo     else:
 >> "%PAYLOAD_FILE%" echo         eta_s = htm((total_bytes - done_bytes) / spd) if spd ^> 0 else "--:--"
->> "%PAYLOAD_FILE%" echo         pre = f"[{bar}] {pct:5.1f}%% {idx}/{len(need)} {hsz(done_bytes)}/{hsz(total_bytes)} {hsz(spd)}/s ETA {eta_s} "
->> "%PAYLOAD_FILE%" echo         rem = 78 - len(pre)
+>> "%PAYLOAD_FILE%" echo         pre = f"[{bar}] {pct:5.1f}%% | {idx}/{len(need)} | {hsz(done_bytes)}/{hsz(total_bytes)} | {hsz(spd)}/s | ETA {eta_s} | "
+>> "%PAYLOAD_FILE%" echo         rem = 118 - len(pre)
 >> "%PAYLOAD_FILE%" echo         nm = name if len(name) ^<= rem else (name[:max(1, rem - 3)] + "...")
 >> "%PAYLOAD_FILE%" echo         msg = pre + (nm if rem ^> 3 else "")
 >> "%PAYLOAD_FILE%" echo     pad = " " * max(0, last_len - len(msg))
@@ -293,7 +293,7 @@ echo Scanning local backup folder "%PHOTOS_BACKUP_DIR%"...
 >> "%PAYLOAD_FILE%" echo         return b
 >> "%PAYLOAD_FILE%" echo with tarfile.open(fileobj=sys.stdout.buffer, mode="w|") as tf:
 >> "%PAYLOAD_FILE%" echo     for i, (fp, rel, _) in enumerate(need, 1):
->> "%PAYLOAD_FILE%" echo         nm = os.path.basename(rel)
+>> "%PAYLOAD_FILE%" echo         nm = rel[8:] if rel.startswith("library/") else (rel[rel.index("/admin/") + 1:] if "/admin/" in rel else rel)
 >> "%PAYLOAD_FILE%" echo         show(i, nm)
 >> "%PAYLOAD_FILE%" echo         with open(fp, "rb") as f:
 >> "%PAYLOAD_FILE%" echo             ti = tf.gettarinfo(arcname=rel, fileobj=f)
